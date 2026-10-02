@@ -9,8 +9,11 @@ Node + TypeScript CLI. No global installs required by users. Reads package.json 
 (npm, pnpm, yarn), queries the public npm registry for peerDependencies with a local cache and polite
 rate limiting, and works offline from the cache. Outputs: terminal summary, Markdown report, single-file HTML report.
 
-Commands (filled in once the scaffold exists; see package.json scripts):
-- Lint / typecheck / test: see `package.json`
+Commands:
+- Full local CI (lint, docs check, typecheck, tests, build, pack check): `npm run ci`
+- Tests: `npm test` (Vitest; never hits the network)
+- Warm-cache benchmark: `npm run bench:warm`
+- Re-record registry fixtures (uses the network): `npm run record:fixtures`
 - Secret guard: `node scripts/guard-keys.mjs --all`
 
 ## Invariants

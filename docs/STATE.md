@@ -22,15 +22,17 @@ Done:
   berry) lockfiles; npm registry client with cache, rate limiting and offline mode.
 - Five real open-source fixtures (Angular 11, 13, 15, 16 and 17; npm, pnpm and yarn lockfiles) with recorded
   registry data and snapshot tests of their plans. Sources and licences are in each `SOURCE.md`.
-- Two plans verified by hand: `docs/verification/` (jira-clone-angular 11 to 22, yunikorn-web 16 to 22).
+- Two plans verified line by line: `docs/verification/` (jira-clone-angular 11 to 22, yunikorn-web 16 to 22).
+  The check was done by the development agent with a separate checker script, not yet by a person.
 - Warm cache: each fixture plans in about 0.3 s (`npm run bench:warm`, Node.js 24 on Windows); the limit is 30 s.
 - README, CONTRIBUTING, LICENSE (MIT), CHANGELOG, GitHub Actions CI (Node.js 20 and 22), and a package that
   `npm run check:pack` confirms holds only the README, licence, changelog, `package.json` and `dist/`.
 - `npm publish` is blocked by `prepublishOnly` until the Sponsor approves.
 
+Confirmed on GitHub: the CI workflow passed on Node.js 20 and 22 (2026-10-02, commit 9348136).
+
 Not verified yet:
-- The GitHub Actions workflow has not run on GitHub. `npm run ci` runs the same steps and passes locally on
-  Node.js 24; Node.js 20 and 22 were not available on this machine.
+- A person has not yet reviewed the two verified plans.
 - Effort points are not calibrated against real upgrades.
 
 ## Roadmap
