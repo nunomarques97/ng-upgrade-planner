@@ -1,5 +1,5 @@
 ---
-status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); not yet run on GitHub CI, not published, repository still private, package version still 0.1.0
+status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); GitHub CI passed on Node.js 20 and 22 (commit 59b7cc6), not published, repository still private, package version still 0.1.0
 sponsor_action: decide on the gates - make the GitHub repository public, publish to npm (including which version number to publish), and confirm the 8-week usage review
 kill_review: none scheduled; proposed for the Sponsor to confirm - review usage 8 weeks after the first npm publish
 success_metric: v0.2 - the scan finds every synthetic true positive and nothing on the synthetic negative cases, the JSON plan is snapshot-tested on the 5 fixtures, the skill passes its spec and CLI checks, and each fixture plans with the scan on in under 30 s with a warm cache (met locally); the v0.1 metric (5 fixtures, 2 plans checked by the development agent, under 30 s) still holds
@@ -48,8 +48,8 @@ Done in v0.1:
 - README, CONTRIBUTING, LICENSE (MIT), CHANGELOG, GitHub Actions CI (Node.js 20 and 22).
 - `npm publish` is blocked by `prepublishOnly` until the Sponsor approves.
 
-Confirmed on GitHub: the CI workflow passed on Node.js 20 and 22 for v0.1 (2026-10-02, commit 9348136). v0.2 has
-not run on GitHub CI yet.
+Confirmed on GitHub: the CI workflow passed on Node.js 20 and 22 for v0.1 (2026-10-02, commit 9348136). It also passed for
+v0.2 (2026-10-02, commit 59b7cc6).
 
 Not verified yet:
 - A person has not yet reviewed the two verified plans.
