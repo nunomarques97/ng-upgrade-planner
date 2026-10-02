@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "demo-shop",
     "packageManager": null,
@@ -626,8 +626,38 @@
           "confidence": "unverified"
         }
       ],
+      "removedApis": [
+        {
+          "file": "src/app/app-routing.module.ts",
+          "line": 12,
+          "column": 51,
+          "entryId": "v15-router-relative-link-resolution",
+          "package": "@angular/router",
+          "api": "RouterModule.forRoot relativeLinkResolution",
+          "change": "removed",
+          "major": 15,
+          "replacement": "none",
+          "migration": "yes",
+          "confidence": "confirmed",
+          "reason": null
+        },
+        {
+          "file": "tsconfig.json",
+          "line": 24,
+          "column": 5,
+          "entryId": "v15-compiler-cli-enable-ivy",
+          "package": "@angular/compiler-cli",
+          "api": "angularCompilerOptions.enableIvy",
+          "change": "removed",
+          "major": 15,
+          "replacement": "none",
+          "migration": "unknown",
+          "confidence": "confirmed",
+          "reason": null
+        }
+      ],
       "effort": {
-        "points": 53,
+        "points": 57,
         "label": "L",
         "counts": {
           "steps": {
@@ -637,14 +667,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 1,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 1,
+            "manual": 1
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 32,
           "majorBumps": 9,
           "requirements": 2,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 4
         }
       }
     },
@@ -1322,9 +1357,81 @@
           "confidence": "unverified"
         }
       ],
+      "removedApis": [
+        {
+          "file": "angular.json",
+          "line": 5,
+          "column": 3,
+          "entryId": "v16-cli-default-project",
+          "package": "@angular/cli",
+          "api": "angular.json defaultProject",
+          "change": "removed",
+          "major": 16,
+          "replacement": "none",
+          "migration": "yes",
+          "confidence": "confirmed",
+          "reason": null
+        },
+        {
+          "file": "src/app/admin/admin.module.ts",
+          "line": 22,
+          "column": 3,
+          "entryId": "v16-core-ng-module-entry-components",
+          "package": "@angular/core",
+          "api": "@NgModule entryComponents",
+          "change": "removed",
+          "major": 16,
+          "replacement": "none",
+          "migration": "no",
+          "confidence": "confirmed",
+          "reason": null
+        },
+        {
+          "file": "src/app/shared/shared.module.ts",
+          "line": 31,
+          "column": 3,
+          "entryId": "v16-core-ng-module-entry-components",
+          "package": "@angular/core",
+          "api": "@NgModule entryComponents",
+          "change": "removed",
+          "major": 16,
+          "replacement": "none",
+          "migration": "no",
+          "confidence": "confirmed",
+          "reason": null
+        },
+        {
+          "file": "src/app/features/enterprise-reporting/legacy-dashboard-widgets/reflective-injector-factory.service.ts",
+          "line": 7,
+          "column": 10,
+          "entryId": "v16-core-reflective-injector",
+          "package": "@angular/core",
+          "api": "ReflectiveInjector",
+          "change": "removed",
+          "major": 16,
+          "replacement": "Injector.create",
+          "migration": "no",
+          "confidence": "confirmed",
+          "reason": null
+        },
+        {
+          "file": "src/app/checkout/checkout.component.html",
+          "line": 44,
+          "column": 9,
+          "entryId": "sample-template-binding",
+          "package": "@angular/forms",
+          "api": "sampleLegacy template binding",
+          "change": "removed",
+          "major": 16,
+          "replacement": "the sampleInput binding",
+          "migration": "unknown",
+          "confidence": "heuristic",
+          "reason": "Matched by text in a component template, not by the Angular template parser."
+        }
+      ],
       "effort": {
-        "points": 63,
-        "label": "L",
+        "points": 73,
+        "label": "XL",
         "counts": {
           "steps": {
             "basic": 9,
@@ -1333,14 +1440,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 1,
+            "manual": 3
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 40,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 10
         }
       }
     },
@@ -1898,8 +2010,24 @@
           "confidence": "unverified"
         }
       ],
+      "removedApis": [
+        {
+          "file": "src/app/app-routing.module.ts",
+          "line": 13,
+          "column": 5,
+          "entryId": "v17-router-malformed-uri-error-handler",
+          "package": "@angular/router",
+          "api": "RouterModule.forRoot malformedUriErrorHandler",
+          "change": "removed",
+          "major": 17,
+          "replacement": "Handle URL parsing errors in UrlSerializer.parse",
+          "migration": "no",
+          "confidence": "confirmed",
+          "reason": null
+        }
+      ],
       "effort": {
-        "points": 51,
+        "points": 54,
         "label": "L",
         "counts": {
           "steps": {
@@ -1909,14 +2037,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 4,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 1
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 24,
           "majorBumps": 9,
           "requirements": 8,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 3
         }
       }
     }
@@ -2205,7 +2338,7 @@
     }
   ],
   "effort": {
-    "points": 167,
+    "points": 184,
     "label": "L",
     "counts": {
       "steps": {
@@ -2215,15 +2348,42 @@
       },
       "majorBumps": 9,
       "unmetRequirements": 7,
-      "blockers": 3
+      "blockers": 3,
+      "removedApis": {
+        "migrated": 2,
+        "manual": 5
+      }
     },
     "breakdown": {
       "base": 6,
       "steps": 96,
       "majorBumps": 27,
       "requirements": 14,
-      "blockers": 24
+      "blockers": 24,
+      "removedApis": 17
     }
+  },
+  "scan": {
+    "status": "ran",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 312,
+    "findings": 10,
+    "attached": 8,
+    "notAttached": {
+      "atOrBelowCurrent": 1,
+      "aboveTarget": 1,
+      "noHop": 0
+    },
+    "unscanned": [
+      {
+        "file": "src/app/generated/api-client.ts",
+        "reason": "larger than 1024 kB, not read"
+      }
+    ]
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -2249,6 +2409,11 @@
       "reason": "registry data cached on 2026-06-14 could not be refreshed (network error: getaddrinfo ENOTFOUND registry.npmjs.org)"
     },
     {
+      "hop": null,
+      "subject": "source src/app/generated/api-client.ts",
+      "reason": "not scanned: larger than 1024 kB, not read"
+    },
+    {
       "hop": 15,
       "subject": "ngx-flex-grid",
       "reason": "Could not check 2.0.0 against Angular 15: no reference version for @angular/flex-layout: registry data unavailable: not in the offline cache."
@@ -2267,6 +2432,11 @@
       "hop": 16,
       "subject": "ngx-toastr",
       "reason": "registry data cached on 2026-06-14 could not be refreshed (network error: getaddrinfo ENOTFOUND registry.npmjs.org)"
+    },
+    {
+      "hop": 16,
+      "subject": "removed API sampleLegacy template binding at src/app/checkout/checkout.component.html:44",
+      "reason": "Matched by text in a component template, not by the Angular template parser."
     },
     {
       "hop": 17,

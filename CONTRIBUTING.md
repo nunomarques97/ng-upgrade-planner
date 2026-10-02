@@ -26,9 +26,9 @@ The last command turns on the pre-commit secret guard (see below). Run the CLI f
 | `npm run typecheck` | TypeScript in strict mode, sources and tests |
 | `npm test` | Vitest, including the fixture snapshot tests |
 | `npm run build` | Cleans `dist/` and compiles `src/` to `dist/` |
-| `npm run check:pack` | Runs `npm pack --dry-run` and fails unless the package holds only `package.json`, `README.md`, `LICENSE`, `CHANGELOG.md` and compiled `dist/` files, and `dist/cli.js` has its shebang (build first) |
+| `npm run check:pack` | Runs `npm pack --dry-run` and fails unless the package holds only `package.json`, `README.md`, `LICENSE`, `CHANGELOG.md`, compiled `dist/` files and the Markdown files of the Agent Skill in `skills/angular-upgrade-hops/` (`SKILL.md` required), and `dist/cli.js` has its shebang (build first) |
 | `npm run ci` | All of the above in the same order as GitHub Actions |
-| `npm run bench:warm` | Plans every fixture offline with the built CLI and fails if one takes 30 s or more (build first) |
+| `npm run bench:warm` | Plans every fixture offline with the built CLI and the removed-API scan on. Each fixture's `package.json` and lockfile are copied to a temporary project with 361 generated source files (components, templates, services and `angular.json`, some using removed APIs). Fails if a run fails, scans fewer files than generated or takes 30 s or more (build first) |
 | `npm run record:fixtures` | Records registry data for the fixtures (uses the network; see below) |
 
 Before opening a pull request, run `npm run ci`. It must pass on Node.js 20 and 22.
@@ -48,6 +48,17 @@ built in the test itself. Unit test inputs such as small lockfiles are written i
   commit, the files copied, the licence with a link, the copyright line and the retrieval date. Include the
   NOTICE text when the licence asks for it.
 - After adding or changing an app, record its registry data and review the updated snapshots.
+
+`test/fixtures/synthetic/scan` holds source files written for this repository to test the removed-API scan.
+They are labelled synthetic and must never be copied from an application. Keep them in that folder, apart from
+the app fixtures.
+
+## Removed-API data
+
+`src/data/removed-apis.ts` lists the Angular APIs the scan looks for. Every entry must cite an official Angular
+source (the Angular or Angular CLI CHANGELOG, or the angular.dev update guide or deprecations guide) and say
+whether the official `ng update` migration fixes it; a test rejects entries without one. A change that a source
+scan cannot detect goes into `REMOVED_API_EXCLUDED` with the reason instead.
 
 ## Recording registry data
 

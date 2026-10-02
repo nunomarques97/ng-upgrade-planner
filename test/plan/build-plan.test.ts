@@ -645,35 +645,35 @@ describe('effort and determinism', () => {
       {
         points: 9,
         label: 'S',
-        counts: { steps: { basic: 1, medium: 1, advanced: 1 }, majorBumps: 1, unmetRequirements: 0, blockers: 0 },
-        breakdown: { base: 2, steps: 4, majorBumps: 3, requirements: 0, blockers: 0 },
+        counts: { steps: { basic: 1, medium: 1, advanced: 1 }, majorBumps: 1, unmetRequirements: 0, blockers: 0, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 4, majorBumps: 3, requirements: 0, blockers: 0, removedApis: 0 },
       },
       // 16: TypeScript and zone.js are too old.
       {
         points: 6,
         label: 'S',
-        counts: { steps: { basic: 0, medium: 0, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 0 },
-        breakdown: { base: 2, steps: 0, majorBumps: 0, requirements: 4, blockers: 0 },
+        counts: { steps: { basic: 0, medium: 0, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 0, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 0, majorBumps: 0, requirements: 4, blockers: 0, removedApis: 0 },
       },
       // 17: the same, plus ngx-stuck becomes a blocker.
       {
         points: 15,
         label: 'S',
-        counts: { steps: { basic: 0, medium: 1, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 1 },
-        breakdown: { base: 2, steps: 1, majorBumps: 0, requirements: 4, blockers: 8 },
+        counts: { steps: { basic: 0, medium: 1, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 1, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 1, majorBumps: 0, requirements: 4, blockers: 8, removedApis: 0 },
       },
     ]);
     expect(result.effort).toEqual({
       points: 30,
       label: 'S',
-      counts: { steps: { basic: 1, medium: 2, advanced: 1 }, majorBumps: 1, unmetRequirements: 4, blockers: 1 },
-      breakdown: { base: 6, steps: 5, majorBumps: 3, requirements: 8, blockers: 8 },
+      counts: { steps: { basic: 1, medium: 2, advanced: 1 }, majorBumps: 1, unmetRequirements: 4, blockers: 1, removedApis: { migrated: 0, manual: 0 } },
+      breakdown: { base: 6, steps: 5, majorBumps: 3, requirements: 8, blockers: 8, removedApis: 0 },
     });
   });
 
   it('maps points to S, M, L and XL labels', () => {
     const effortFor = (basic: number) =>
-      hopEffort({ steps: Array.from({ length: basic }, () => ({ level: 'basic' }) as PlanStep), libraries: [], requirements: [] });
+      hopEffort({ steps: Array.from({ length: basic }, () => ({ level: 'basic' }) as PlanStep), libraries: [], requirements: [], removedApis: [] });
     // 2 base points plus 2 per basic step.
     expect([8, 9, 18, 19, 33, 34].map((n) => [effortFor(n).points, effortFor(n).label])).toEqual([
       [18, 'S'],

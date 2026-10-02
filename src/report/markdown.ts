@@ -1,21 +1,27 @@
 // Markdown report. Every plan string is escaped with escapeMarkdown or markdownCode; step text
 // keeps its code spans and https links only.
-import type { Fact, Hop, LibraryHopResult, UpgradePlan } from '../plan/types.js';
+import type { Fact, Hop, LibraryHopResult, RemovedApiFinding, UpgradePlan } from '../plan/types.js';
 import {
   LEVELS,
   LEVEL_TITLES,
+  REMOVED_API_HELP,
   STATUS_HELP,
   UNVERIFIED_INTRO,
   confirmedStatements,
   effortBreakdown,
   effortText,
   factValue,
+  findingLocation,
   hopTitle,
   hopView,
   libraryStatusText,
   peerCheckText,
   peerEvidence,
+  removedApiCountText,
+  removedApiEmptyText,
   requirementStatusText,
+  scanNotes,
+  scanStatusText,
   stepCountText,
   unverifiedGroups,
 } from './model.js';
@@ -58,7 +64,31 @@ function libraryRows(hop: Hop): string[][] {
   });
 }
 
-function hopSection(hop: Hop, index: number): string[] {
+function findingRow(finding: RemovedApiFinding): string[] {
+  const confidence = finding.confidence === 'heuristic' ? `heuristic (unverified): ${md(finding.reason ?? '')}` : 'confirmed';
+  return [
+    markdownCode(findingLocation(finding), true),
+    `${markdownCode(finding.api, true)} from ${markdownCode(finding.package, true)}`,
+    md(finding.change),
+    md(finding.replacement),
+    md(finding.migration),
+    confidence,
+  ];
+}
+
+function removedApiSection(plan: UpgradePlan, hop: Hop): string[] {
+  const out: string[] = ['### Removed or changed APIs', ''];
+  const empty = removedApiEmptyText(plan, hop);
+  if (empty !== null) return [...out, md(empty), ''];
+  out.push(`${md(removedApiCountText(hop))}.`, '');
+  out.push(
+    ...table(['Location', 'API', 'Change', 'Replacement', 'Fixed by ng update migration', 'Confidence'], hop.removedApis.map(findingRow)),
+    '',
+  );
+  return out;
+}
+
+function hopSection(plan: UpgradePlan, hop: Hop, index: number): string[] {
   const view = hopView(hop);
   const out: string[] = [`## Hop ${index + 1}: ${md(hopTitle(hop))}`, ''];
   out.push(`Target release: ${factCell(hop.angular)}. Effort: **${md(effortText(hop.effort))}**.`, '');
@@ -110,6 +140,8 @@ function hopSection(hop: Hop, index: number): string[] {
     out.push(...table(['Requirement', 'Required range', 'Installed', 'Status', 'Source'], rows), '');
   }
 
+  out.push(...removedApiSection(plan, hop));
+
   out.push('### Effort', '');
   out.push(`${md(effortText(hop.effort))}: ${md(effortBreakdown(hop.effort))}.`, '');
   return out;
@@ -131,6 +163,7 @@ export function renderMarkdown(plan: UpgradePlan, meta: ReportMeta): string {
         ['Hops', String(plan.hops.length)],
         ['Total effort', plan.hops.length > 0 ? md(effortText(plan.effort)) : 'none'],
         ['Lockfile', lockfile !== null ? `${markdownCode(lockfile.file, true)} (${md(lockfile.kind)})` : 'none'],
+        ['Source scan', md(scanStatusText(plan))],
       ],
     ),
     '',
@@ -153,12 +186,17 @@ export function renderMarkdown(plan: UpgradePlan, meta: ReportMeta): string {
         String(view.blockers.length),
         String(view.unknown.length),
         String(view.warnings.length),
+        String(hop.removedApis.length),
         md(effortText(hop.effort)),
       ];
     });
-    out.push(...table(['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Effort'], rows), '');
+    out.push(
+      ...table(['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Effort'], rows),
+      '',
+    );
     out.push(md(STATUS_HELP), '');
-    plan.hops.forEach((hop, index) => out.push(...hopSection(hop, index)));
+    out.push([...scanNotes(plan), ...(plan.scan.status === 'ran' ? [REMOVED_API_HELP] : [])].map(md).join(' '), '');
+    plan.hops.forEach((hop, index) => out.push(...hopSection(plan, hop, index)));
   }
 
   out.push('## Confirmed and unverified results', '');

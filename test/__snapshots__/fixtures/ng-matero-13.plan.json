@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "ng-matero",
     "packageManager": null,
@@ -1202,6 +1202,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 54,
         "label": "L",
@@ -1213,14 +1214,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 0,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 32,
           "majorBumps": 12,
           "requirements": 0,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -2340,6 +2346,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 56,
         "label": "L",
@@ -2351,14 +2358,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 1,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 32,
           "majorBumps": 12,
           "requirements": 2,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -3572,6 +3584,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 66,
         "label": "L",
@@ -3583,14 +3596,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 40,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -4684,6 +4702,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 50,
         "label": "L",
@@ -4695,14 +4714,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 24,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -5860,6 +5884,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 55,
         "label": "L",
@@ -5871,14 +5896,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 29,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -6974,6 +7004,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 47,
         "label": "L",
@@ -6985,14 +7016,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 24,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -8168,6 +8204,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 59,
         "label": "L",
@@ -8179,14 +8216,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 36,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -9330,6 +9372,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 54,
         "label": "L",
@@ -9341,14 +9384,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 28,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -10625,6 +10673,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 74,
         "label": "XL",
@@ -10636,14 +10685,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 4,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 44,
           "majorBumps": 12,
           "requirements": 8,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     }
@@ -11301,15 +11355,37 @@
       },
       "majorBumps": 34,
       "unmetRequirements": 17,
-      "blockers": 9
+      "blockers": 9,
+      "removedApis": {
+        "migrated": 0,
+        "manual": 0
+      }
     },
     "breakdown": {
       "base": 18,
       "steps": 289,
       "majorBumps": 102,
       "requirements": 34,
-      "blockers": 72
+      "blockers": 72,
+      "removedApis": 0
     }
+  },
+  "scan": {
+    "status": "no-source-files",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 0,
+    "findings": 0,
+    "attached": 0,
+    "notAttached": {
+      "atOrBelowCurrent": 0,
+      "aboveTarget": 0,
+      "noHop": 0
+    },
+    "unscanned": []
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -11319,6 +11395,11 @@
     "coversThroughMajor": 22
   },
   "unverified": [
+    {
+      "hop": null,
+      "subject": "removed-API scan",
+      "reason": "no TypeScript, template or configuration file was found in the project folder, so no source was checked"
+    },
     {
       "hop": 14,
       "subject": "angular-cli-ghpages",

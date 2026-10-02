@@ -6,6 +6,7 @@ import type { UpdateGuideData } from '../data/types.js';
 import { describeCause } from '../project/errors.js';
 import type { ProjectDependency, ProjectInfo } from '../project/types.js';
 import type { PackageResult } from '../registry/types.js';
+import type { ScanFinding } from '../scan/types.js';
 import {
   alignRequiredVersions,
   angularPeers,
@@ -40,6 +41,9 @@ import {
   type Library,
   type PackageSource,
   type PlanOptions,
+  type PlanScan,
+  type PlanScanInput,
+  type RemovedApiFinding,
   type UnclassifiedDependency,
   type UnverifiedItem,
   type UpgradePlan,
@@ -156,6 +160,71 @@ function nodeFact(nodeVersion: string | null | undefined): Fact<string | null> {
   return confirmed(version, 'option');
 }
 
+function planFinding(finding: ScanFinding): RemovedApiFinding {
+  return {
+    file: finding.file,
+    line: finding.line,
+    column: finding.column,
+    entryId: finding.entryId,
+    package: finding.package,
+    api: finding.api,
+    change: finding.change,
+    major: finding.major,
+    replacement: finding.replacement,
+    migration: finding.migration,
+    confidence: finding.confidence,
+    reason: finding.confidence === 'heuristic' ? (finding.reason ?? 'found by text matching') : null,
+  };
+}
+
+/**
+ * Attaches each scan finding to the hop where it must be fixed: the hop whose target major is the
+ * major where the API is removed or breaks. Findings for majors at or below the installed one, above
+ * the target, or without a hop are only counted.
+ */
+export function attachFindings(
+  input: PlanScanInput | null | undefined,
+  currentMajor: number,
+  hopMajors: readonly number[],
+  targetMajor: number,
+): { byHop: Map<number, RemovedApiFinding[]>; scan: PlanScan } {
+  const byHop = new Map<number, RemovedApiFinding[]>(hopMajors.map((major) => [major, []]));
+  const notAttached = { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 0 };
+  if (!input) {
+    return {
+      byHop,
+      scan: { status: 'off', coverage: null, filesScanned: 0, findings: 0, attached: 0, notAttached, unscanned: [] },
+    };
+  }
+  const { result, coverage } = input;
+  let attached = 0;
+  for (const finding of result.findings) {
+    const hop = byHop.get(finding.major);
+    if (finding.major <= currentMajor) notAttached.atOrBelowCurrent++;
+    else if (finding.major > targetMajor) notAttached.aboveTarget++;
+    else if (!hop) notAttached.noHop++;
+    else {
+      hop.push(planFinding(finding));
+      attached++;
+    }
+  }
+  const empty = result.filesScanned === 0 && result.unscanned.length === 0;
+  return {
+    byHop,
+    scan: {
+      status: empty ? 'no-source-files' : 'ran',
+      coverage: { firstMajor: coverage.firstMajor, lastMajor: coverage.lastMajor, retrieved: coverage.retrieved },
+      filesScanned: result.filesScanned,
+      findings: result.findings.length,
+      attached,
+      notAttached,
+      unscanned: result.unscanned.map((item) => ({ file: item.file, reason: item.reason })),
+    },
+  };
+}
+
+const SCAN_SUBJECT = 'removed-API scan';
+
 function collectUnverified(plan: Omit<UpgradePlan, 'unverified'>): UnverifiedItem[] {
   const items = new Map<string, UnverifiedItem>();
   const add = (hop: number | null, subject: string, reason: string | null): void => {
@@ -176,6 +245,16 @@ function collectUnverified(plan: Omit<UpgradePlan, 'unverified'>): UnverifiedIte
   for (const dependency of plan.unclassified) {
     add(null, dependency.name, `could not tell whether it depends on Angular: ${dependency.reason}`);
   }
+  const { scan } = plan;
+  if (plan.hops.length > 0 && scan.status === 'off') {
+    add(null, SCAN_SUBJECT, 'the scan was turned off, so the source was not checked for removed or changed Angular APIs');
+  }
+  if (plan.hops.length > 0 && scan.status === 'no-source-files') {
+    add(null, SCAN_SUBJECT, 'no TypeScript, template or configuration file was found in the project folder, so no source was checked');
+  }
+  if (plan.hops.length > 0) {
+    for (const item of scan.unscanned) add(null, `source ${item.file}`, `not scanned: ${item.reason}`);
+  }
   for (const hop of plan.hops) {
     addFact(hop.to, `Angular ${hop.to} release`, hop.angular);
     if (hop.stepCoverage === 'not-covered') add(hop.to, 'update steps', hop.stepsNote);
@@ -189,6 +268,19 @@ function collectUnverified(plan: Omit<UpgradePlan, 'unverified'>): UnverifiedIte
         if (requirement.installed.source !== 'none') {
           addFact(hop.to, `installed ${requirement.name} (${requirement.requiredBy})`, requirement.installed);
         }
+      }
+    }
+    const coverage = scan.status === 'ran' ? scan.coverage : null;
+    if (coverage && (hop.to < coverage.firstMajor || hop.to > coverage.lastMajor)) {
+      add(
+        hop.to,
+        SCAN_SUBJECT,
+        `the bundled removed-API data covers Angular ${coverage.firstMajor} to ${coverage.lastMajor} only, so changes in Angular ${hop.to} were not checked`,
+      );
+    }
+    for (const finding of hop.removedApis) {
+      if (finding.confidence === 'heuristic') {
+        add(hop.to, `removed API ${finding.api} at ${finding.file}:${finding.line}`, finding.reason);
       }
     }
     for (const library of hop.libraries) {
@@ -301,6 +393,7 @@ export async function buildPlan(
   const registryNames = new Map(candidates.map(({ library }) => [library.name, library.registryName]));
   const byRegistryName = new Map(project.dependencies.map((dependency) => [dependency.registryName, dependency]));
   const node = nodeFact(options.nodeVersion);
+  const findings = attachFindings(options.scan, currentMajor, hopMajors, target.major);
 
   const hops: Hop[] = [];
   let after = encodedVersion(currentMajor, installed.minor);
@@ -328,6 +421,7 @@ export async function buildPlan(
       stepsNote: stepData.note,
       requirements,
       libraries,
+      removedApis: findings.byHop.get(major) ?? [],
     };
     hops.push({ ...hop, effort: hopEffort(hop) });
     after = major * 100 + 99;
@@ -373,6 +467,7 @@ export async function buildPlan(
     libraries: candidates.map(({ library }) => library).sort(byName),
     unclassified: unclassified.sort(byName),
     effort: totalEffort(hops),
+    scan: findings.scan,
     updateGuide: {
       url: guide.source.url,
       commit: guide.source.commit,

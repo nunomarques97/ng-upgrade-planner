@@ -4,19 +4,23 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { isPlanError, buildPlan } from './plan/index.js';
+import { CLI_NAME, CLI_OPTIONS } from './cli-options.js';
+import { REMOVED_APIS } from './data/removed-apis.js';
+import { isPlanError, buildPlan, type PlanScanInput } from './plan/index.js';
 import { describeCause, isProjectError } from './project/errors.js';
 import { readProject } from './project/index.js';
 import { DEFAULT_REGISTRY, RegistryClient, RegistryConfigError, defaultCacheDir } from './registry/index.js';
-import { cleanText, renderTerminal, shouldUseColor, writeReports } from './report/index.js';
+import { cleanText, renderJson, renderTerminal, shouldUseColor, writeReports } from './report/index.js';
+import { scan } from './scan/index.js';
 
-const NAME = 'ng-upgrade-planner';
+const NAME = CLI_NAME;
 
 function usage(): string {
   return `Usage: ${NAME} [options]
 
 Plans an Angular upgrade hop by hop for the project in the current folder: official update steps,
-the newest compatible version of each Angular-dependent library, blockers and an effort estimate.
+the newest compatible version of each Angular-dependent library, blockers, uses of removed or
+changed Angular APIs in the project source and an effort estimate.
 
 Options:
   --cwd <dir>        Project folder (default: the current folder)
@@ -24,8 +28,10 @@ Options:
   --offline          Use only the local registry cache; never contact the registry
   --registry <url>   npm registry URL (default: ${DEFAULT_REGISTRY})
   --cache-dir <dir>  Registry cache folder (default: ${defaultCacheDir()})
-  --out-dir <dir>    Folder for ng-upgrade-plan.md and ng-upgrade-plan.html (default: the project folder)
-  --no-report        Print the summary only; write no report files
+  --out-dir <dir>    Folder for ng-upgrade-plan.md, .html and .json (default: the project folder)
+  --no-report        Write no report files
+  --no-scan          Do not scan the project source for removed or changed Angular APIs
+  --json             Print the plan as JSON (schema version 1) instead of the summary
   -h, --help         Show this help
   -v, --version      Show the version
 
@@ -56,6 +62,8 @@ interface Options {
   cacheDir: string | undefined;
   outDir: string | undefined;
   report: boolean;
+  scan: boolean;
+  json: boolean;
 }
 
 function quoted(text: string): string {
@@ -93,17 +101,7 @@ function parseOptions(argv: string[]): Options {
       args: argv,
       strict: true,
       allowPositionals: false,
-      options: {
-        cwd: { type: 'string' },
-        to: { type: 'string' },
-        offline: { type: 'boolean' },
-        registry: { type: 'string' },
-        'cache-dir': { type: 'string' },
-        'out-dir': { type: 'string' },
-        'no-report': { type: 'boolean' },
-        help: { type: 'boolean', short: 'h' },
-        version: { type: 'boolean', short: 'v' },
-      },
+      options: CLI_OPTIONS,
     });
   } catch (error) {
     throw parseError(error);
@@ -128,6 +126,8 @@ function parseOptions(argv: string[]): Options {
     cacheDir: nonEmpty(values['cache-dir'], '--cache-dir'),
     outDir: nonEmpty(values['out-dir'], '--out-dir'),
     report: values['no-report'] !== true,
+    scan: values['no-scan'] !== true,
+    json: values.json === true,
   };
 }
 
@@ -158,22 +158,36 @@ async function run(argv: string[]): Promise<number> {
   }
 
   const project = await readProject(options.cwd);
+  let scanInput: PlanScanInput | null = null;
+  if (options.scan) {
+    try {
+      scanInput = { result: await scan(options.cwd, REMOVED_APIS), coverage: REMOVED_APIS };
+    } catch (error) {
+      throw new FileError(`Could not scan the project source in ${options.cwd}: ${describeCause(error)}`);
+    }
+  }
   const plan = await buildPlan(project, client, {
     ...(options.to !== undefined ? { targetMajor: options.to } : {}),
     nodeVersion: process.version,
+    scan: scanInput,
   });
 
+  const toolVersion = ownVersion();
   let reports: string[] | null = null;
   if (options.report) {
     const outDir = path.resolve(options.outDir ?? options.cwd);
     try {
-      reports = await writeReports(plan, outDir, { toolVersion: ownVersion() });
+      reports = await writeReports(plan, outDir, { toolVersion });
     } catch (error) {
       throw new FileError(`Could not write the reports to ${outDir}: ${describeCause(error)}`);
     }
   }
 
-  process.stdout.write(renderTerminal(plan, { color: shouldUseColor(process.stdout, process.env), reports }));
+  if (options.json) {
+    process.stdout.write(renderJson(plan, { toolVersion }));
+  } else {
+    process.stdout.write(renderTerminal(plan, { color: shouldUseColor(process.stdout, process.env), reports }));
+  }
   return 0;
 }
 

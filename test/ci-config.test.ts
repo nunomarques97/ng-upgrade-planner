@@ -1,7 +1,7 @@
 // Checks the release tooling: the GitHub Actions workflow matches the local "ci" script, the
 // npm package check rejects unwanted files, the docs check catches its failure cases, and the
 // example report in README.md is still a verbatim excerpt of a fixture snapshot.
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -18,6 +18,7 @@ afterAll(() => {
 interface PackageJson {
   scripts: Record<string, string>;
   engines: { node: string };
+  files: string[];
 }
 
 interface Step {
@@ -33,6 +34,7 @@ interface Workflow {
 
 interface CheckPack {
   packProblems: (files: string[], cliText?: string) => string[];
+  SKILL_DIR: string;
 }
 
 interface CheckDocs {
@@ -98,8 +100,17 @@ describe('check-pack', () => {
     'dist/cli.js',
     'dist/index.js',
     'dist/plan/build-plan.js',
+    'skills/angular-upgrade-hops/SKILL.md',
+    'skills/angular-upgrade-hops/references/plan-json.md',
   ];
   const cli = '#!/usr/bin/env node\n// entry point\n';
+
+  it('packs the skills folder, and its skill is the one in the repository', async () => {
+    const { SKILL_DIR } = await script<CheckPack>('check-pack.mjs');
+    expect(pkg.files).toEqual(['dist', 'skills', 'CHANGELOG.md']);
+    expect(SKILL_DIR).toBe('skills/angular-upgrade-hops');
+    expect(readdirSync(path.join(root, 'skills'))).toEqual(['angular-upgrade-hops']);
+  });
 
   it('accepts the expected package contents', async () => {
     const { packProblems } = await script<CheckPack>('check-pack.mjs');
@@ -121,6 +132,11 @@ describe('check-pack', () => {
     ['an unexpected root file', 'CONTRIBUTING.md'],
     ['a non-JavaScript file under dist', 'dist/data/update-steps.json'],
     ['a snapshot', 'dist/__snapshots__/plan.js'],
+    ['another skill', 'skills/other-skill/SKILL.md'],
+    ['a file at the top of skills/', 'skills/README.md'],
+    ['a script in the skill', 'skills/angular-upgrade-hops/scripts/run.sh'],
+    ['a JSON file in the skill', 'skills/angular-upgrade-hops/references/plan.json'],
+    ['a dotfile in the skill', 'skills/angular-upgrade-hops/.env.md'],
   ])('rejects %s', async (_label, file) => {
     const { packProblems } = await script<CheckPack>('check-pack.mjs');
     const problems = packProblems([...clean, file], cli);
@@ -128,7 +144,7 @@ describe('check-pack', () => {
     expect(problems[0]).toContain(file);
   });
 
-  it.each(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'dist/cli.js'])('requires %s', async (file) => {
+  it.each(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'dist/cli.js', 'skills/angular-upgrade-hops/SKILL.md'])('requires %s', async (file) => {
     const { packProblems } = await script<CheckPack>('check-pack.mjs');
     expect(packProblems(clean.filter((entry) => entry !== file), cli)).toEqual([`${file}: missing from the package`]);
   });

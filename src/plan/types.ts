@@ -1,9 +1,11 @@
 // The upgrade plan model. It is a plain, JSON-serializable object (no Maps, no undefined, no
 // class instances) and every value records whether it was confirmed by evidence or not.
+import type { RemovedApiChange, RemovedApiMigration } from '../data/types.js';
 import type { DependencyKind } from '../project/types.js';
 import type { PackageResult } from '../registry/types.js';
+import type { ScanConfidence, ScanResult, UnscannedFile } from '../scan/types.js';
 
-export const PLAN_SCHEMA = 1;
+export const PLAN_SCHEMA = 2;
 
 /**
  * confirmed: backed by the lockfile, current registry data (network or a cache entry within its
@@ -43,6 +45,21 @@ export interface PlanOptions {
    * running the CLI. null or absent: the Node requirement status is unknown.
    */
   nodeVersion?: string | null;
+  /** Result of the removed-API scan of the project's source. Absent or null: the scan was turned off. */
+  scan?: PlanScanInput | null;
+}
+
+/** Range of Angular majors the removed-API data describes. */
+export interface ScanCoverage {
+  firstMajor: number;
+  lastMajor: number;
+  /** Date the data's official sources were read (YYYY-MM-DD). */
+  retrieved: string;
+}
+
+export interface PlanScanInput {
+  result: ScanResult;
+  coverage: ScanCoverage;
 }
 
 export type StepLevel = 'basic' | 'medium' | 'advanced';
@@ -125,6 +142,8 @@ export interface EffortCounts {
   majorBumps: number;
   unmetRequirements: number;
   blockers: number;
+  /** Distinct removed or changed APIs found in the source, by whether ng update fixes them. */
+  removedApis: { migrated: number; manual: number };
 }
 
 export type EffortLabel = 'S' | 'M' | 'L' | 'XL';
@@ -134,7 +153,57 @@ export interface Effort {
   label: EffortLabel;
   counts: EffortCounts;
   /** Points per contributor; they add up to `points`. */
-  breakdown: { base: number; steps: number; majorBumps: number; requirements: number; blockers: number };
+  breakdown: { base: number; steps: number; majorBumps: number; requirements: number; blockers: number; removedApis: number };
+}
+
+/** A use of an API that is removed or changed in a hop's major, found in the project's source. */
+export interface RemovedApiFinding {
+  /** Path relative to the project folder, with forward slashes. */
+  file: string;
+  line: number;
+  column: number;
+  /** Id of the removed-API data entry that matched. */
+  entryId: string;
+  package: string;
+  /** The symbol, template pattern or config property. */
+  api: string;
+  change: RemovedApiChange;
+  major: number;
+  replacement: string;
+  /** Whether the official ng update migration of that major fixes it automatically. */
+  migration: RemovedApiMigration;
+  /** confirmed: found by an import or a parsed configuration property; heuristic: found by text matching. */
+  confidence: ScanConfidence;
+  /** Why a heuristic finding may be wrong; null for confirmed findings. */
+  reason: string | null;
+}
+
+/**
+ * ran: the source was scanned. off: the scan was turned off. no-source-files: the project folder
+ * has no TypeScript, template or configuration file to scan.
+ */
+export type ScanStatus = 'ran' | 'off' | 'no-source-files';
+
+export interface PlanScan {
+  status: ScanStatus;
+  /** Data coverage; null when the scan was turned off. */
+  coverage: ScanCoverage | null;
+  filesScanned: number;
+  /** Every finding of the scan, attached to a hop or not. */
+  findings: number;
+  /** Findings attached to a hop of this plan. */
+  attached: number;
+  /** Findings that are not part of this plan, by why. */
+  notAttached: {
+    /** The API changed in a major at or below the installed one. */
+    atOrBelowCurrent: number;
+    /** The API changes in a major above the target. */
+    aboveTarget: number;
+    /** The major is in range but has no hop (no stable release). */
+    noHop: number;
+  };
+  /** Files or folders that were found but could not be scanned. */
+  unscanned: UnscannedFile[];
 }
 
 export interface Hop {
@@ -150,6 +219,8 @@ export interface Hop {
   stepsNote: string | null;
   requirements: Requirement[];
   libraries: LibraryHopResult[];
+  /** Uses of APIs removed or changed in this hop's major, sorted by file and position. */
+  removedApis: RemovedApiFinding[];
   effort: Effort;
 }
 
@@ -207,6 +278,8 @@ export interface UpgradePlan {
   /** Direct dependencies whose registry data was missing, so they could not be classified. */
   unclassified: UnclassifiedDependency[];
   effort: Effort;
+  /** The removed-API scan of the project's source. */
+  scan: PlanScan;
   updateGuide: { url: string; commit: string; commitDate: string; license: string; coversThroughMajor: number };
   /** Everything that could not be verified, in a stable order. */
   unverified: UnverifiedItem[];

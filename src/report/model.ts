@@ -7,13 +7,14 @@ import type {
   LibraryHopResult,
   PeerCheck,
   PlanStep,
+  RemovedApiFinding,
   Requirement,
   StepLevel,
   UnverifiedItem,
   UpgradePlan,
 } from '../plan/types.js';
 
-export const REPORT_FILES = { markdown: 'ng-upgrade-plan.md', html: 'ng-upgrade-plan.html' } as const;
+export const REPORT_FILES = { markdown: 'ng-upgrade-plan.md', html: 'ng-upgrade-plan.html', json: 'ng-upgrade-plan.json' } as const;
 
 export const LEVELS: readonly StepLevel[] = ['basic', 'medium', 'advanced'];
 
@@ -64,9 +65,74 @@ export function effortText(effort: Effort): string {
 }
 
 export function effortBreakdown(effort: Effort): string {
-  const { base, steps, majorBumps, requirements, blockers } = effort.breakdown;
-  return `base ${base}, steps ${steps}, major library updates ${majorBumps}, framework requirements ${requirements}, blockers ${blockers}`;
+  const { base, steps, majorBumps, requirements, blockers, removedApis } = effort.breakdown;
+  return `base ${base}, steps ${steps}, major library updates ${majorBumps}, framework requirements ${requirements}, blockers ${blockers}, removed APIs ${removedApis}`;
 }
+
+/** Short scan status for the summary facts. */
+export function scanStatusText(plan: UpgradePlan): string {
+  const { scan } = plan;
+  if (scan.status === 'off') return 'turned off';
+  if (scan.status === 'no-source-files') return 'no source files found';
+  return `${scan.filesScanned} ${plural(scan.filesScanned, 'file', 'files')}, ${scan.attached} ${plural(scan.attached, 'finding', 'findings')}`;
+}
+
+/** Plan-level sentences about the scan: what it checked and what is not part of the plan. */
+export function scanNotes(plan: UpgradePlan): string[] {
+  const { scan } = plan;
+  if (scan.status === 'off') return ['The removed-API scan was turned off (--no-scan), so the source was not checked.'];
+  if (scan.status === 'no-source-files') {
+    return ['No TypeScript, template or configuration file was found in the project folder, so no source was checked for removed APIs.'];
+  }
+  const lines: string[] = [];
+  const coverage = scan.coverage;
+  const data = coverage ? ` against the bundled data for Angular ${coverage.firstMajor} to ${coverage.lastMajor} (official sources read on ${coverage.retrieved})` : '';
+  lines.push(`The removed-API scan checked ${scan.filesScanned} source ${plural(scan.filesScanned, 'file', 'files')}${data}.`);
+  const { atOrBelowCurrent, aboveTarget, noHop } = scan.notAttached;
+  if (atOrBelowCurrent > 0) {
+    lines.push(`${atOrBelowCurrent} ${plural(atOrBelowCurrent, 'finding is', 'findings are')} for Angular ${plan.current.major} or earlier and not listed: the installed version is past those changes.`);
+  }
+  if (aboveTarget > 0) {
+    lines.push(`${aboveTarget} ${plural(aboveTarget, 'finding is', 'findings are')} for Angular versions after ${plan.target.major} and not part of this plan.`);
+  }
+  if (noHop > 0) lines.push(`${noHop} ${plural(noHop, 'finding is', 'findings are')} for Angular versions without a stable release and not listed.`);
+  if (scan.unscanned.length > 0) {
+    const count = scan.unscanned.length;
+    lines.push(`${count} ${plural(count, 'file or folder', 'files or folders')} could not be scanned; see "Could not be verified".`);
+  }
+  return lines;
+}
+
+/** Why a hop lists no removed-API findings, or null when it has some. */
+export function removedApiEmptyText(plan: UpgradePlan, hop: Hop): string | null {
+  if (hop.removedApis.length > 0) return null;
+  if (plan.scan.status === 'off') return 'Not checked: the scan was turned off.';
+  if (plan.scan.status === 'no-source-files') return 'Not checked: no source files were found.';
+  const coverage = plan.scan.coverage;
+  if (coverage && (hop.to < coverage.firstMajor || hop.to > coverage.lastMajor)) {
+    return `Not checked: the bundled data covers Angular ${coverage.firstMajor} to ${coverage.lastMajor} only.`;
+  }
+  return 'None found.';
+}
+
+/** For example "3 uses of 2 APIs (2 confirmed, 1 heuristic)". */
+export function removedApiCountText(hop: Hop): string {
+  const uses = hop.removedApis.length;
+  const apis = new Set(hop.removedApis.map((finding) => finding.entryId)).size;
+  const heuristic = hop.removedApis.filter((finding) => finding.confidence === 'heuristic').length;
+  return `${uses} ${plural(uses, 'use', 'uses')} of ${apis} ${plural(apis, 'API', 'APIs')} (${uses - heuristic} confirmed, ${heuristic} heuristic)`;
+}
+
+export function findingLocation(finding: RemovedApiFinding): string {
+  return `${finding.file}:${finding.line}`;
+}
+
+export function migrationText(finding: RemovedApiFinding): string {
+  return `fixed by ng update migration: ${finding.migration}`;
+}
+
+export const REMOVED_API_HELP =
+  "Removed APIs are uses, in the project source, of Angular APIs removed or changed in the hop's version. Confirmed findings come from an import of the matching package or a parsed configuration property; heuristic ones come from text matching in templates and may be false positives.";
 
 /** Step count with its split by level, for example "21 (11 basic, 8 medium, 2 advanced)". */
 export function stepCountText(hop: Hop): string {
@@ -161,8 +227,30 @@ export function sourceText(value: Fact<unknown>): string {
   return SOURCE_TEXT[value.source];
 }
 
-/** Statements backed by evidence, for the "Confirmed" part of the reports. */
-export function confirmedStatements(plan: UpgradePlan): string[] {
+/** What was confirmed by evidence for one hop, in one sentence. */
+export function hopConfirmedStatement(plan: UpgradePlan, hop: Hop): string {
+  const decided = hop.libraries.filter((library) => library.status !== 'unknown' && library.confidence === 'confirmed').length;
+  const requirements = hop.requirements.filter(
+    (requirement) => requirement.status !== 'unknown' && requirement.range.confidence === 'confirmed',
+  ).length;
+  const parts = [
+    `${decided} of ${hop.libraries.length} library ${plural(hop.libraries.length, 'result', 'results')} decided from published peer ranges`,
+    `${requirements} of ${hop.requirements.length} framework ${plural(hop.requirements.length, 'requirement', 'requirements')} checked`,
+  ];
+  if (hop.stepCoverage === 'recorded') parts.push(`${hop.steps.length} official ${plural(hop.steps.length, 'step', 'steps')}`);
+  if (hop.stepCoverage === 'none-recorded') parts.push('no official steps recorded for this hop');
+  if (plan.scan.status === 'ran') {
+    const found = hop.removedApis.filter((finding) => finding.confidence === 'confirmed').length;
+    parts.push(`${found} removed-API ${plural(found, 'finding', 'findings')} confirmed by imports or parsed configuration`);
+  }
+  return `${hopTitle(hop)}: ${parts.join('; ')}.`;
+}
+
+/**
+ * Statements backed by evidence, for the "Confirmed" part of the reports. With `hops: false` the
+ * per-hop statements (hopConfirmedStatement) are left out.
+ */
+export function confirmedStatements(plan: UpgradePlan, options: { hops?: boolean } = {}): string[] {
   const lines: string[] = [];
   const current = plan.current.angular;
   if (current.confidence === 'confirmed') {
@@ -183,18 +271,15 @@ export function confirmedStatements(plan: UpgradePlan): string[] {
     lines.push(`Registry data for ${plan.libraries.length} Angular-dependent ${plural(plan.libraries.length, 'library', 'libraries')}: ${parts.join(', ')}.`);
   }
 
-  for (const hop of plan.hops) {
-    const decided = hop.libraries.filter((library) => library.status !== 'unknown' && library.confidence === 'confirmed').length;
-    const requirements = hop.requirements.filter(
-      (requirement) => requirement.status !== 'unknown' && requirement.range.confidence === 'confirmed',
-    ).length;
-    const parts = [
-      `${decided} of ${hop.libraries.length} library ${plural(hop.libraries.length, 'result', 'results')} decided from published peer ranges`,
-      `${requirements} of ${hop.requirements.length} framework ${plural(hop.requirements.length, 'requirement', 'requirements')} checked`,
-    ];
-    if (hop.stepCoverage === 'recorded') parts.push(`${hop.steps.length} official ${plural(hop.steps.length, 'step', 'steps')}`);
-    if (hop.stepCoverage === 'none-recorded') parts.push('no official steps recorded for this hop');
-    lines.push(`${hopTitle(hop)}: ${parts.join('; ')}.`);
+  if (options.hops !== false) {
+    for (const hop of plan.hops) lines.push(hopConfirmedStatement(plan, hop));
+  }
+
+  const coverage = plan.scan.coverage;
+  if (plan.hops.length > 0 && plan.scan.status === 'ran' && coverage) {
+    lines.push(
+      `Removed-API scan of ${plan.scan.filesScanned} source ${plural(plan.scan.filesScanned, 'file', 'files')}, against data for Angular ${coverage.firstMajor} to ${coverage.lastMajor} taken from official Angular sources read on ${coverage.retrieved}.`,
+    );
   }
 
   const guide = plan.updateGuide;
@@ -209,7 +294,7 @@ export function plural(count: number, one: string, many: string): string {
 }
 
 export const UNVERIFIED_INTRO =
-  'These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges and anything the registry data could not decide. Check them by hand before relying on them.';
+  'These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges, anything the registry data could not decide, removed-API findings from text matching and source the scan could not check. Check them by hand before relying on them.';
 
 export const STATUS_HELP =
   'Library status comes only from the @angular peer dependency ranges each release publishes, checked against the newest stable Angular release of the hop. "unknown" is never treated as compatible.';

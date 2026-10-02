@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "ngx-admin",
     "packageManager": null,
@@ -1096,6 +1096,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 79,
         "label": "XL",
@@ -1107,14 +1108,19 @@
           },
           "majorBumps": 7,
           "unmetRequirements": 1,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 38,
           "majorBumps": 21,
           "requirements": 2,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -2129,6 +2135,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 59,
         "label": "L",
@@ -2140,14 +2147,19 @@
           },
           "majorBumps": 5,
           "unmetRequirements": 2,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 22,
           "majorBumps": 15,
           "requirements": 4,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -3211,6 +3223,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 64,
         "label": "L",
@@ -3222,14 +3235,19 @@
           },
           "majorBumps": 5,
           "unmetRequirements": 2,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 27,
           "majorBumps": 15,
           "requirements": 4,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -4252,6 +4270,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 56,
         "label": "L",
@@ -4263,14 +4282,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 22,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -5351,6 +5375,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 71,
         "label": "XL",
@@ -5362,14 +5387,19 @@
           },
           "majorBumps": 5,
           "unmetRequirements": 2,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 34,
           "majorBumps": 15,
           "requirements": 4,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -6432,6 +6462,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 62,
         "label": "L",
@@ -6443,14 +6474,19 @@
           },
           "majorBumps": 5,
           "unmetRequirements": 2,
-          "blockers": 2
+          "blockers": 2,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 25,
           "majorBumps": 15,
           "requirements": 4,
-          "blockers": 16
+          "blockers": 16,
+          "removedApis": 0
         }
       }
     },
@@ -7647,6 +7683,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 98,
         "label": "XL",
@@ -7658,14 +7695,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 4,
-          "blockers": 5
+          "blockers": 5,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 42,
           "majorBumps": 6,
           "requirements": 8,
-          "blockers": 40
+          "blockers": 40,
+          "removedApis": 0
         }
       }
     }
@@ -8284,15 +8326,37 @@
       },
       "majorBumps": 33,
       "unmetRequirements": 15,
-      "blockers": 17
+      "blockers": 17,
+      "removedApis": {
+        "migrated": 0,
+        "manual": 0
+      }
     },
     "breakdown": {
       "base": 14,
       "steps": 210,
       "majorBumps": 99,
       "requirements": 30,
-      "blockers": 136
+      "blockers": 136,
+      "removedApis": 0
     }
+  },
+  "scan": {
+    "status": "no-source-files",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 0,
+    "findings": 0,
+    "attached": 0,
+    "notAttached": {
+      "atOrBelowCurrent": 0,
+      "aboveTarget": 0,
+      "noHop": 0
+    },
+    "unscanned": []
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -8302,6 +8366,11 @@
     "coversThroughMajor": 22
   },
   "unverified": [
+    {
+      "hop": null,
+      "subject": "removed-API scan",
+      "reason": "no TypeScript, template or configuration file was found in the project folder, so no source was checked"
+    },
     {
       "hop": 16,
       "subject": "newest compatible @angular-eslint/schematics",

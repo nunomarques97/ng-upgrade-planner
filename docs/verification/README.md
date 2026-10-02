@@ -1,14 +1,18 @@
-# Hand-verified plans
+# Plans checked by the development agent
 
-Two fixture plans were checked line by line against the data they were built from:
+Two fixture plans were checked line by line against the data they were built from. The check was done by the
+development agent with a separate checker script, not yet by a person:
 
 - [yunikorn-web-16.md](yunikorn-web-16.md): Apache YuniKorn web UI, Angular 16 to 22, pnpm lockfile.
 - [jira-clone-angular-11.md](jira-clone-angular-11.md): jira-clone-angular, Angular 11 to 22, npm lockfile.
 
-Verified on 2026-10-02 against the registry data recorded on 2026-10-02 (`test/fixtures/registry`) and the
+Checked on 2026-10-02 against the registry data recorded on 2026-10-02 (`test/fixtures/registry`) and the
 bundled update guide snapshot (angular/angular commit 647bf8e, 2026-08-13). The plans checked are the committed
 snapshots `test/__snapshots__/fixtures/<app>.plan.json` and `.md`, produced with target Angular 22 and Node.js
 20.19.0.
+
+The check covers the plan fields of version 0.1: hops, steps, commands, libraries, blockers and requirements.
+The removed-API scan added later is not part of it, because the fixtures hold no source code to scan.
 
 ## Method
 
@@ -49,7 +53,7 @@ These apply to every plan, not only to the two checked here:
 - **Steps are listed in the hop where they become necessary.** The official update guide also shows steps
   that are only possible at that point and become necessary in a later version. The plan lists such a step
   once, in the hop where it becomes necessary.
-- **Effort is an estimate.** It is a weighted count of steps, major version changes, unmet requirements and
-  blockers. It was not verified against real upgrade effort.
+- **Effort is an estimate.** It is a weighted count of steps, major version changes, unmet requirements,
+  blockers and removed-API findings. It was not verified against real upgrade effort.
 - **Nothing was installed or built.** The verification checks the plan against registry metadata. It does not
   show that the apps install, compile or pass their tests after each hop.

@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "yunikorn-web",
     "packageManager": "pnpm@9",
@@ -575,6 +575,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 36,
         "label": "M",
@@ -586,14 +587,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 24,
           "majorBumps": 6,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -1243,6 +1249,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 41,
         "label": "L",
@@ -1254,14 +1261,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 29,
           "majorBumps": 6,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -1848,6 +1860,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 36,
         "label": "M",
@@ -1859,14 +1872,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 24,
           "majorBumps": 6,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -2526,6 +2544,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 48,
         "label": "L",
@@ -2537,14 +2556,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 36,
           "majorBumps": 6,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -3171,6 +3195,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 40,
         "label": "L",
@@ -3182,14 +3207,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 28,
           "majorBumps": 6,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -3935,6 +3965,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 60,
         "label": "L",
@@ -3946,14 +3977,19 @@
           },
           "majorBumps": 2,
           "unmetRequirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 44,
           "majorBumps": 6,
           "requirements": 8,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     }
@@ -4260,15 +4296,37 @@
       },
       "majorBumps": 12,
       "unmetRequirements": 14,
-      "blockers": 0
+      "blockers": 0,
+      "removedApis": {
+        "migrated": 0,
+        "manual": 0
+      }
     },
     "breakdown": {
       "base": 12,
       "steps": 185,
       "majorBumps": 36,
       "requirements": 28,
-      "blockers": 0
+      "blockers": 0,
+      "removedApis": 0
     }
+  },
+  "scan": {
+    "status": "no-source-files",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 0,
+    "findings": 0,
+    "attached": 0,
+    "notAttached": {
+      "atOrBelowCurrent": 0,
+      "aboveTarget": 0,
+      "noHop": 0
+    },
+    "unscanned": []
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -4278,6 +4336,11 @@
     "coversThroughMajor": 22
   },
   "unverified": [
+    {
+      "hop": null,
+      "subject": "removed-API scan",
+      "reason": "no TypeScript, template or configuration file was found in the project folder, so no source was checked"
+    },
     {
       "hop": 17,
       "subject": "newest compatible @angular-architects/module-federation",

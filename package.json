@@ -18,6 +18,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "CHANGELOG.md"
   ],
   "engines": {
@@ -44,7 +45,9 @@
     "prepublishOnly": "node scripts/prepublish-guard.mjs"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.9",
     "@yarnpkg/lockfile": "^1.1.0",
+    "ignore": "^7.0.12",
     "semver": "^7.8.5",
     "yaml": "^2.9.1"
   },

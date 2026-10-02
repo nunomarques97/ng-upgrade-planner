@@ -5,14 +5,22 @@
 import type { UpgradePlan } from '../plan/types.js';
 import {
   effortText,
+  findingLocation,
   hopTitle,
   hopView,
   libraryUpdateText,
+  migrationText,
   plural,
+  removedApiCountText,
+  removedApiEmptyText,
   requirementWarning,
+  scanStatusText,
   stepCountText,
 } from './model.js';
 import { cleanText as t } from './text.js';
+
+/** Removed-API findings listed per hop; the reports list all of them. */
+export const TERMINAL_FINDINGS_LIMIT = 10;
 
 export interface TerminalOptions {
   color: boolean;
@@ -55,6 +63,7 @@ export function renderTerminal(plan: UpgradePlan, options: TerminalOptions): str
     (detail): detail is string => detail !== null,
   );
   lines.push(`Target:  Angular ${plan.target.major}${details.length > 0 ? ` (${t(details.join(', '))})` : ''}`);
+  if (plan.hops.length > 0) lines.push(`Source scan: ${t(scanStatusText(plan))}${plan.scan.status === 'off' ? ' (--no-scan)' : ''}`);
   for (const warning of plan.project.warnings) lines.push(paint('yellow', `Warning: ${t(warning)}`));
 
   if (plan.message !== null) {
@@ -91,6 +100,24 @@ export function renderTerminal(plan: UpgradePlan, options: TerminalOptions): str
     if (view.warnings.length > 0) {
       lines.push('  Framework requirements:');
       for (const requirement of view.warnings) lines.push(`    ${paint('yellow', t(requirementWarning(requirement)))}`);
+    }
+
+    const empty = removedApiEmptyText(plan, hop);
+    if (empty !== null) {
+      lines.push(`  Removed APIs: ${t(empty)}`);
+    } else {
+      lines.push(`  Removed APIs: ${t(removedApiCountText(hop))}`);
+      for (const finding of hop.removedApis.slice(0, TERMINAL_FINDINGS_LIMIT)) {
+        const heuristic = finding.confidence === 'heuristic' ? paint('yellow', ' (heuristic, unverified)') : '';
+        lines.push(
+          `    ${t(findingLocation(finding))} ${t(finding.api)} (${t(finding.package)}); replacement: ${t(finding.replacement)}; ${t(migrationText(finding))}${heuristic}`,
+        );
+      }
+      const more = hop.removedApis.length - TERMINAL_FINDINGS_LIMIT;
+      if (more > 0) {
+        const where = options.reports === null ? 'write the reports to see them' : 'listed in the reports';
+        lines.push(`    and ${more} more (${where})`);
+      }
     }
   });
 

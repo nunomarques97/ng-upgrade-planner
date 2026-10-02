@@ -6,6 +6,33 @@ All notable changes to this project are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Removed-API scan: the project's own TypeScript sources, component templates (external and inline),
+  `angular.json` and `tsconfig*.json` files are checked for Angular APIs removed or changed in a breaking way in
+  each hop. It skips `node_modules`, build output, caches and everything `.gitignore` excludes.
+- Bundled removed-API data for Angular 9 to 22 (68 entries). Every entry cites the official Angular document
+  that states the change and records the replacement and whether the official `ng update` migration fixes it.
+- Each finding is attached to the hop where it must be fixed, with `file:line`, the API, the replacement and
+  "fixed by ng update migration: yes, no or unknown". TypeScript findings count only when the symbol is imported
+  from the matching package; template findings come from text matching and are listed under "could not be
+  verified".
+- Removed-API findings add to each hop's effort: 1 point per distinct API the migration fixes, 3 points per
+  distinct API it does not fix or may not fix.
+- `--no-scan` turns the scan off.
+- `--json` prints the plan as JSON on stdout instead of the terminal summary, and every run that writes reports
+  also writes `ng-upgrade-plan.json`. The format has a schema version (1) and is documented in
+  `skills/angular-upgrade-hops/references/plan-json.md`.
+- Agent Skill `angular-upgrade-hops` (open SKILL.md format), shipped in the package under `skills/`. It tells an
+  agent to execute the plan one hop at a time on a branch, with one commit per hop, and to stop on any blocker,
+  failed build or test, or result that needs a human.
+
+### Changed
+
+- The terminal summary, Markdown and HTML reports show the scan status and the removed APIs of each hop; the
+  Markdown and HTML summary tables have a removed-API column.
+- `--out-dir` now also receives `ng-upgrade-plan.json`.
+
 ## [0.1.0] - not yet released
 
 First version.

@@ -18,12 +18,13 @@ const WIDTHS = [
   { width: 1440, height: 1000 },
   { width: 390, height: 844 },
 ];
-// Views: the top of the report, a hop's steps, a library table with a blocker and the
-// confirmed/unverified section.
+// Views: the top of the report, a hop's steps, a library table with a blocker, a hop's removed-API
+// findings and the confirmed/unverified section.
 const VIEWS = [
   { name: 'top', anchor: '' },
   { name: 'hop', anchor: '#hop-16' },
   { name: 'libraries', anchor: '#hop-15-libraries' },
+  { name: 'removed-apis', anchor: '#hop-16-removed-apis' },
   { name: 'evidence', anchor: '#evidence' },
 ];
 

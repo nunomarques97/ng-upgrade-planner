@@ -1,24 +1,30 @@
 // Single-file HTML report: inline CSS, no scripts and no external resources. A Content Security
 // Policy blocks scripts and remote loads as a second line of defence; every plan string is
 // escaped with escapeHtml and step text keeps only code spans, line breaks and https links.
-import type { Confidence, Fact, Hop, LibraryHopResult, Requirement, UpgradePlan } from '../plan/types.js';
+import type { Confidence, Fact, Hop, LibraryHopResult, RemovedApiFinding, Requirement, UpgradePlan } from '../plan/types.js';
 import type { ReportMeta } from './markdown.js';
 import {
   LEVELS,
   LEVEL_TITLES,
+  REMOVED_API_HELP,
   STATUS_HELP,
   UNVERIFIED_INTRO,
   confirmedStatements,
   effortBreakdown,
   effortText,
   factValue,
+  findingLocation,
   hopAnchor,
   hopTitle,
   hopView,
   libraryStatusText,
   peerCheckText,
   peerEvidence,
+  removedApiCountText,
+  removedApiEmptyText,
   requirementStatusText,
+  scanNotes,
+  scanStatusText,
   stepCountText,
   unverifiedGroups,
 } from './model.js';
@@ -140,7 +146,39 @@ function peerCell(library: LibraryHopResult): string {
   return `${version !== null ? `<div>${h(version)}:</div>` : ''}<ul class="peers">${items}</ul>`;
 }
 
-function hopSection(hop: Hop, index: number): string {
+function findingRow(finding: RemovedApiFinding): string[] {
+  const migration = badge(finding.migration, finding.migration === 'yes' ? 'ok' : finding.migration === 'no' ? 'bad' : 'warn');
+  // The reason of a heuristic finding is listed under "Could not be verified", which keeps the table narrow.
+  const confidence =
+    finding.confidence === 'heuristic' ? `${badge('heuristic', 'warn')} <span class="tag">unverified</span>` : badge('confirmed', 'ok');
+  return [
+    `<code>${h(findingLocation(finding))}</code>`,
+    `<code>${h(finding.api)}</code><div class="note">${h(finding.package)}, ${h(finding.change)}</div>`,
+    h(finding.replacement),
+    migration,
+    confidence,
+  ];
+}
+
+function removedApiSection(plan: UpgradePlan, hop: Hop): string {
+  const out: string[] = [`<h3 id="${hopAnchor(hop)}-removed-apis">Removed or changed APIs</h3>`];
+  const empty = removedApiEmptyText(plan, hop);
+  if (empty !== null) {
+    out.push(`<p>${h(empty)}</p>`);
+  } else {
+    out.push(`<p>${h(removedApiCountText(hop))}.</p>`);
+    out.push(
+      tableHtml(
+        ['Location', 'API', 'Replacement', 'Fixed by ng update migration', 'Confidence'],
+        hop.removedApis.map(findingRow),
+        `Removed or changed APIs to fix in the hop to Angular ${hop.to}`,
+      ),
+    );
+  }
+  return out.join('\n');
+}
+
+function hopSection(plan: UpgradePlan, hop: Hop, index: number): string {
   const view = hopView(hop);
   const out: string[] = [`<section id="${hopAnchor(hop)}" aria-labelledby="${hopAnchor(hop)}-title">`];
   out.push(`<h2 id="${hopAnchor(hop)}-title">Hop ${index + 1}: ${h(hopTitle(hop))}</h2>`);
@@ -211,6 +249,8 @@ function hopSection(hop: Hop, index: number): string {
     );
   }
 
+  out.push(removedApiSection(plan, hop));
+
   out.push('<h3>Effort</h3>');
   out.push(`<p>${h(effortText(hop.effort))}: ${h(effortBreakdown(hop.effort))}.</p>`);
   out.push('</section>');
@@ -231,6 +271,7 @@ export function renderHtml(plan: UpgradePlan, meta: ReportMeta): string {
     ['Hops', String(plan.hops.length)],
     ['Total effort', plan.hops.length > 0 ? h(effortText(plan.effort)) : 'none'],
     ['Lockfile', lockfile !== null ? `${h(lockfile.file)} <span class="note">${h(lockfile.kind)}</span>` : 'none'],
+    ['Source scan', h(scanStatusText(plan))],
   ];
   body.push(`<dl class="facts">${facts.map(([label, value]) => `<div><dt>${h(label)}</dt><dd>${value}</dd></div>`).join('')}</dl>`);
   body.push('</header>');
@@ -252,14 +293,21 @@ export function renderHtml(plan: UpgradePlan, meta: ReportMeta): string {
         view.blockers.length > 0 ? badge(String(view.blockers.length), 'bad') : '0',
         String(view.unknown.length),
         String(view.warnings.length),
+        String(hop.removedApis.length),
         h(effortText(hop.effort)),
       ];
     });
     body.push(
-      tableHtml(['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Effort'], rows, 'Work per hop', [1, 2, 3, 4, 5]),
+      tableHtml(
+        ['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Effort'],
+        rows,
+        'Work per hop',
+        [1, 2, 3, 4, 5, 6],
+      ),
     );
     body.push(`<p class="note">${h(STATUS_HELP)}</p>`);
-    plan.hops.forEach((hop, index) => body.push(hopSection(hop, index)));
+    body.push(`<p class="note">${[...scanNotes(plan), ...(plan.scan.status === 'ran' ? [REMOVED_API_HELP] : [])].map(h).join(' ')}</p>`);
+    plan.hops.forEach((hop, index) => body.push(hopSection(plan, hop, index)));
   }
 
   body.push('<section id="evidence" aria-labelledby="evidence-title">', '<h2 id="evidence-title">Confirmed and unverified results</h2>');

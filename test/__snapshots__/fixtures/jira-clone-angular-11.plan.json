@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "jira-clone-angular-frontend",
     "packageManager": null,
@@ -991,6 +991,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 36,
         "label": "M",
@@ -1002,14 +1003,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 21,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -1929,6 +1935,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 39,
         "label": "M",
@@ -1940,14 +1947,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 16,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -2893,6 +2905,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 43,
         "label": "L",
@@ -2904,14 +2917,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 20,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -3873,6 +3891,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 51,
         "label": "L",
@@ -3884,14 +3903,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 28,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -4926,6 +4950,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 64,
         "label": "L",
@@ -4937,14 +4962,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 38,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -5866,6 +5896,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 48,
         "label": "L",
@@ -5877,14 +5908,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 22,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -6886,6 +6922,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 50,
         "label": "L",
@@ -6897,14 +6934,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 27,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -7835,6 +7877,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 48,
         "label": "L",
@@ -7846,14 +7889,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 22,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -8879,6 +8927,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 57,
         "label": "L",
@@ -8890,14 +8939,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 34,
           "majorBumps": 9,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -9860,6 +9914,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 51,
         "label": "L",
@@ -9871,14 +9926,19 @@
           },
           "majorBumps": 4,
           "unmetRequirements": 2,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 25,
           "majorBumps": 12,
           "requirements": 4,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     },
@@ -10990,6 +11050,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 69,
         "label": "L",
@@ -11001,14 +11062,19 @@
           },
           "majorBumps": 3,
           "unmetRequirements": 4,
-          "blockers": 1
+          "blockers": 1,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 42,
           "majorBumps": 9,
           "requirements": 8,
-          "blockers": 8
+          "blockers": 8,
+          "removedApis": 0
         }
       }
     }
@@ -11559,15 +11625,37 @@
       },
       "majorBumps": 37,
       "unmetRequirements": 24,
-      "blockers": 10
+      "blockers": 10,
+      "removedApis": {
+        "migrated": 0,
+        "manual": 0
+      }
     },
     "breakdown": {
       "base": 22,
       "steps": 295,
       "majorBumps": 111,
       "requirements": 48,
-      "blockers": 80
+      "blockers": 80,
+      "removedApis": 0
     }
+  },
+  "scan": {
+    "status": "no-source-files",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 0,
+    "findings": 0,
+    "attached": 0,
+    "notAttached": {
+      "atOrBelowCurrent": 0,
+      "aboveTarget": 0,
+      "noHop": 0
+    },
+    "unscanned": []
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -11577,6 +11665,11 @@
     "coversThroughMajor": 22
   },
   "unverified": [
+    {
+      "hop": null,
+      "subject": "removed-API scan",
+      "reason": "no TypeScript, template or configuration file was found in the project folder, so no source was checked"
+    },
     {
       "hop": 12,
       "subject": "@angular-builders/custom-webpack",

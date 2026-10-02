@@ -1,0 +1,20 @@
+// Synthetic workspace file with comments, as the Angular CLI accepts.
+{
+  "version": 1,
+  "defaultProject": "app",
+  "cli": { "defaultCollection": "@schematics/angular" },
+  "projects": {
+    "app": {
+      "root": "",
+      "cli": { "defaultCollection": "@schematics/angular", },
+      "architect": {
+        "build": {
+          "options": { "outputPath": "build/app" }
+        },
+        "server": {
+          "options": { "outputPath": { "base": "out/server" } }
+        }
+      }
+    }
+  }
+}

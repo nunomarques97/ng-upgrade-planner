@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "angular-spotify",
     "packageManager": null,
@@ -855,6 +855,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 55,
         "label": "L",
@@ -866,14 +867,19 @@
           },
           "majorBumps": 8,
           "unmetRequirements": 1,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 27,
           "majorBumps": 24,
           "requirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -1675,6 +1681,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 49,
         "label": "L",
@@ -1686,14 +1693,19 @@
           },
           "majorBumps": 7,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 22,
           "majorBumps": 21,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -2546,6 +2558,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 64,
         "label": "L",
@@ -2557,14 +2570,19 @@
           },
           "majorBumps": 8,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 34,
           "majorBumps": 24,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -3355,6 +3373,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 55,
         "label": "L",
@@ -3366,14 +3385,19 @@
           },
           "majorBumps": 8,
           "unmetRequirements": 2,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 25,
           "majorBumps": 24,
           "requirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     },
@@ -4306,6 +4330,7 @@
           "confidence": "confirmed"
         }
       ],
+      "removedApis": [],
       "effort": {
         "points": 73,
         "label": "XL",
@@ -4317,14 +4342,19 @@
           },
           "majorBumps": 7,
           "unmetRequirements": 4,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": {
+            "migrated": 0,
+            "manual": 0
+          }
         },
         "breakdown": {
           "base": 2,
           "steps": 42,
           "majorBumps": 21,
           "requirements": 8,
-          "blockers": 0
+          "blockers": 0,
+          "removedApis": 0
         }
       }
     }
@@ -4861,15 +4891,37 @@
       },
       "majorBumps": 38,
       "unmetRequirements": 11,
-      "blockers": 0
+      "blockers": 0,
+      "removedApis": {
+        "migrated": 0,
+        "manual": 0
+      }
     },
     "breakdown": {
       "base": 10,
       "steps": 150,
       "majorBumps": 114,
       "requirements": 22,
-      "blockers": 0
+      "blockers": 0,
+      "removedApis": 0
     }
+  },
+  "scan": {
+    "status": "no-source-files",
+    "coverage": {
+      "firstMajor": 9,
+      "lastMajor": 22,
+      "retrieved": "2026-10-02"
+    },
+    "filesScanned": 0,
+    "findings": 0,
+    "attached": 0,
+    "notAttached": {
+      "atOrBelowCurrent": 0,
+      "aboveTarget": 0,
+      "noHop": 0
+    },
+    "unscanned": []
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -4879,6 +4931,11 @@
     "coversThroughMajor": 22
   },
   "unverified": [
+    {
+      "hop": null,
+      "subject": "removed-API scan",
+      "reason": "no TypeScript, template or configuration file was found in the project folder, so no source was checked"
+    },
     {
       "hop": 18,
       "subject": "@nx/angular",

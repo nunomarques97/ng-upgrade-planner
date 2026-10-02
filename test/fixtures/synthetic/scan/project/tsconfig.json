@@ -1,0 +1,10 @@
+/* Synthetic TypeScript configuration. */
+{
+  "compilerOptions": {
+    "strict": true, // a trailing comment
+  },
+  "angularCompilerOptions": {
+    "enableIvy": true,
+    "fullTemplateTypeCheck": true
+  }
+}

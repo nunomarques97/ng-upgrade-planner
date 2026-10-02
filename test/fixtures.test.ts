@@ -1,15 +1,17 @@
 // Plans the real open-source apps in test/fixtures/apps offline, against the registry data
-// recorded by scripts/record-fixtures.mjs, and compares the Markdown report and the plan model
-// with committed snapshots. The network guard in test/setup.ts fails any test that reaches the
+// recorded by scripts/record-fixtures.mjs, and compares the Markdown report, the JSON output
+// (ng-upgrade-plan.json) and the plan model with committed snapshots. The network guard in test/setup.ts fails any test that reaches the
 // network.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { REMOVED_APIS } from '../src/data/removed-apis.js';
 import { buildPlan, type PackageSource, type UpgradePlan } from '../src/plan/index.js';
 import { readProject } from '../src/project/index.js';
 import { RecordCache, RegistryClient, type PackageResult } from '../src/registry/index.js';
-import { renderMarkdown } from '../src/report/index.js';
+import { renderJson, renderMarkdown } from '../src/report/index.js';
+import { scan } from '../src/scan/index.js';
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const appsDir = path.join(fixtures, 'apps');
@@ -53,8 +55,15 @@ async function planFixture(app: string): Promise<FixturePlan> {
       return result;
     },
   };
-  const project = await readProject(path.join(appsDir, app));
-  const plan = await buildPlan(project, source, { targetMajor: TARGET_MAJOR, nodeVersion: NODE_VERSION });
+  const dir = path.join(appsDir, app);
+  const project = await readProject(dir);
+  // The fixtures hold no source, so the scan runs as the CLI's would and finds nothing to scan.
+  const scanned = await scan(dir, REMOVED_APIS);
+  const plan = await buildPlan(project, source, {
+    targetMajor: TARGET_MAJOR,
+    nodeVersion: NODE_VERSION,
+    scan: { result: scanned, coverage: REMOVED_APIS },
+  });
   return { plan, results };
 }
 
@@ -101,12 +110,16 @@ describe.each(APPS)('plan for %s', (app) => {
     expect(plan.unclassified).toEqual([]);
     expect(plan.target.major).toBe(TARGET_MAJOR);
     expect(plan.hops.at(-1)?.to).toBe(TARGET_MAJOR);
+    expect(plan.scan.status).toBe('no-source-files');
   });
 
-  it('matches the snapshots of the Markdown report and the plan model', async () => {
+  it('matches the snapshots of the Markdown report, the JSON output and the plan model', async () => {
     const { plan } = await planFixture(app);
     await expect(renderMarkdown(plan, { toolVersion: TOOL_VERSION })).toMatchFileSnapshot(
       `./__snapshots__/fixtures/${app}.md`,
+    );
+    await expect(renderJson(plan, { toolVersion: TOOL_VERSION })).toMatchFileSnapshot(
+      `./__snapshots__/fixtures/${app}.ng-upgrade-plan.json`,
     );
     await expect(`${JSON.stringify(plan, null, 2)}\n`).toMatchFileSnapshot(`./__snapshots__/fixtures/${app}.plan.json`);
   });

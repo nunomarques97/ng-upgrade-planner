@@ -8,10 +8,14 @@ export type { PackageRecord, PackageResult, VersionRecord } from './registry/ind
 export {
   renderHtml,
   renderMarkdown,
+  renderJson,
+  planJson,
+  PLAN_JSON_SCHEMA_VERSION,
   renderTerminal,
   shouldUseColor,
   writeReports,
   REPORT_FILES,
+  type PlanJson,
   type ReportMeta,
   type TerminalOptions,
 } from './report/index.js';

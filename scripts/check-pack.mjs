@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Checks what `npm pack` would put in the published package, without writing a tarball.
-// Fails unless the list holds only package.json, README.md, LICENSE, CHANGELOG.md and compiled
-// JavaScript under dist/ (no tests, fixtures, source maps, TypeScript sources, docs or dotfiles),
-// and dist/cli.js starts with a Node.js shebang.
+// Fails unless the list holds only package.json, README.md, LICENSE, CHANGELOG.md, compiled
+// JavaScript under dist/ (no tests, fixtures, source maps, TypeScript sources, docs or dotfiles)
+// and the Markdown files of the Agent Skill under skills/, including its SKILL.md, and
+// dist/cli.js starts with a Node.js shebang.
 //
 // Usage: npm run build && npm run check:pack
 import { spawnSync } from 'node:child_process';
@@ -14,6 +15,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const ROOT_FILES = ['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md'];
 export const CLI = 'dist/cli.js';
 export const SHEBANG = '#!/usr/bin/env node';
+export const SKILL_DIR = 'skills/angular-upgrade-hops';
+export const SKILL = `${SKILL_DIR}/SKILL.md`;
 const BANNED_FOLDERS = /^(src|test|tests|__tests__|__snapshots__|fixtures|docs|coverage|scripts|node_modules)$/i;
 
 function fail(message) {
@@ -32,8 +35,16 @@ export function packProblems(files, cliText) {
     if (ROOT_FILES.includes(file)) continue;
     const segments = file.split('/');
     const base = segments[segments.length - 1] ?? '';
-    if (segments[0] !== 'dist' || segments.length < 2) {
-      problems.push(`${file}: not allowed in the package (only ${ROOT_FILES.join(', ')} and dist/)`);
+    if (segments[0] === 'skills') {
+      if (!file.startsWith(`${SKILL_DIR}/`)) {
+        problems.push(`${file}: not part of the skill (only ${SKILL_DIR}/ is allowed under skills/)`);
+      } else if (segments.some((segment) => segment.startsWith('.'))) {
+        problems.push(`${file}: dotfile in the package`);
+      } else if (!/^[\w.-]+\.md$/.test(base)) {
+        problems.push(`${file}: unexpected file type in the skill (only Markdown is expected)`);
+      }
+    } else if (segments[0] !== 'dist' || segments.length < 2) {
+      problems.push(`${file}: not allowed in the package (only ${ROOT_FILES.join(', ')}, dist/ and ${SKILL_DIR}/)`);
     } else if (segments.some((segment) => segment.startsWith('.'))) {
       problems.push(`${file}: dotfile in the package`);
     } else if (segments.slice(1, -1).some((segment) => BANNED_FOLDERS.test(segment))) {
@@ -48,7 +59,7 @@ export function packProblems(files, cliText) {
       problems.push(`${file}: unexpected file type in dist/ (only compiled .js is expected)`);
     }
   }
-  for (const required of [...ROOT_FILES, CLI]) {
+  for (const required of [...ROOT_FILES, CLI, SKILL]) {
     if (!list.includes(required)) problems.push(`${required}: missing from the package`);
   }
   if (cliText !== undefined) {
@@ -96,6 +107,8 @@ function main() {
   }
   const kilobytes = Number.isFinite(size) ? `, ${(size / 1024).toFixed(1)} kB unpacked` : '';
   console.log(`check-pack: OK, ${files.length} files${kilobytes}.`);
+  const skill = files.map((file) => file.replace(/\\/g, '/')).filter((file) => file.startsWith('skills/')).sort();
+  console.log(`check-pack: Agent Skill files:\n${skill.map((file) => `  ${file}`).join('\n')}`);
 }
 
 const invoked = process.argv[1] ? path.resolve(process.argv[1]) : '';
