@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks secrets from being committed. Enable with: git config core.hooksPath .githooks
+set -e
+node "$(git rev-parse --show-toplevel)/scripts/guard-keys.mjs"
