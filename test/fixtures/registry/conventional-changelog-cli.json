@@ -1,0 +1,3 @@
+{"schema":1,"name":"conventional-changelog-cli","fetchedAt":"2026-10-02T14:47:11.869Z","distTags":{"latest":"5.0.0"},"versions":{
+"5.0.0":{"deprecated":"This package is no longer maintained. Please use the conventional-changelog package instead."}
+}}

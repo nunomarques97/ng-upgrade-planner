@@ -1,0 +1,61 @@
+{
+  "name": "ng-upgrade-planner",
+  "version": "0.1.0",
+  "description": "Plan an Angular upgrade hop by hop: official update steps, compatible library versions, blockers and effort per major version.",
+  "license": "MIT",
+  "author": "Nuno Marques",
+  "homepage": "https://github.com/nunomarques97/ng-upgrade-planner#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nunomarques97/ng-upgrade-planner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nunomarques97/ng-upgrade-planner/issues"
+  },
+  "type": "module",
+  "bin": {
+    "ng-upgrade-planner": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "angular",
+    "upgrade",
+    "migration",
+    "ng-update",
+    "cli",
+    "peer-dependencies"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:pack": "node scripts/check-pack.mjs",
+    "ci": "npm run lint && npm run check:docs && npm run typecheck && npm test && npm run build && npm run check:pack",
+    "bench:warm": "node scripts/bench-warm.mjs",
+    "record:fixtures": "npm run build && node scripts/record-fixtures.mjs",
+    "prepublishOnly": "node scripts/prepublish-guard.mjs"
+  },
+  "dependencies": {
+    "@yarnpkg/lockfile": "^1.1.0",
+    "semver": "^7.8.5",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^20.19.43",
+    "@types/semver": "^7.8.0",
+    "@types/yarnpkg__lockfile": "^1.1.9",
+    "eslint": "^9.39.5",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^4.1.11"
+  }
+}

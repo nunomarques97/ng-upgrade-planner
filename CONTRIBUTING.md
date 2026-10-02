@@ -1,0 +1,98 @@
+# Contributing
+
+Thanks for helping. Bug reports with a `package.json` and lockfile that produce a wrong plan are especially
+useful: say which hop and library is wrong and what the registry shows for it.
+
+## Setup
+
+You need Node.js 20 or 22 (CI runs both) and npm.
+
+```sh
+git clone https://github.com/nunomarques97/ng-upgrade-planner.git
+cd ng-upgrade-planner
+npm ci
+git config core.hooksPath .githooks
+```
+
+The last command turns on the pre-commit secret guard (see below). Run the CLI from source with
+`npm run build` and then `node dist/cli.js --cwd path/to/an/angular-app`.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run lint` | ESLint on sources, tests and scripts |
+| `npm run check:docs` | Required docs exist, `docs/STATE.md` front-matter is complete, `docs/WALKTHROUGH.md` stays under 1100 words, no em-dash in `src`, `docs`, README, CONTRIBUTING or CHANGELOG |
+| `npm run typecheck` | TypeScript in strict mode, sources and tests |
+| `npm test` | Vitest, including the fixture snapshot tests |
+| `npm run build` | Cleans `dist/` and compiles `src/` to `dist/` |
+| `npm run check:pack` | Runs `npm pack --dry-run` and fails unless the package holds only `package.json`, `README.md`, `LICENSE`, `CHANGELOG.md` and compiled `dist/` files, and `dist/cli.js` has its shebang (build first) |
+| `npm run ci` | All of the above in the same order as GitHub Actions |
+| `npm run bench:warm` | Plans every fixture offline with the built CLI and fails if one takes 30 s or more (build first) |
+| `npm run record:fixtures` | Records registry data for the fixtures (uses the network; see below) |
+
+Before opening a pull request, run `npm run ci`. It must pass on Node.js 20 and 22.
+
+## Tests never use the network
+
+`test/setup.ts` installs a guard that fails any test that tries to reach the network. Registry data comes from
+recordings in `test/fixtures/registry`, which use the same trimmed format as the runtime cache, or from records
+built in the test itself. Unit test inputs such as small lockfiles are written inline in the test code.
+
+## Fixtures
+
+`test/fixtures/apps` holds real open-source Angular apps. The rules:
+
+- Copy only `package.json` and one lockfile, unchanged. No source code, no other files.
+- Use only apps under a licence that allows it, and add a `SOURCE.md` next to them with the repository, the
+  commit, the files copied, the licence with a link, the copyright line and the retrieval date. Include the
+  NOTICE text when the licence asks for it.
+- After adding or changing an app, record its registry data and review the updated snapshots.
+
+## Recording registry data
+
+```sh
+npm run record:fixtures
+```
+
+This is the only script that contacts the npm registry, and tests never run it. It replaces every file in
+`test/fixtures/registry`, trims each record to what the planner reads, and checks that every fixture plan is the
+same with the full and the trimmed data. After recording, update the snapshots with `npx vitest run -u`, read the
+diff of `test/__snapshots__/fixtures`, and explain the changes in the pull request.
+
+## Update guide data
+
+`src/data/update-steps.ts` is a generated copy of the Angular update guide data from
+[angular/angular](https://github.com/angular/angular) (`adev/src/app/features/update/recommendations.ts`,
+MIT licence, Copyright Google LLC). Do not edit it by hand. Refresh it with:
+
+```sh
+node scripts/update-steps.mjs
+```
+
+The script reads the upstream file with the TypeScript compiler API without running it, and records the
+commit, its date and the licence in the generated file. Keep that attribution.
+
+## Secret guard
+
+`scripts/guard-keys.mjs` blocks commits that contain credential files or key-shaped strings. With
+`git config core.hooksPath .githooks` it runs on every commit. To scan the whole working tree:
+
+```sh
+node scripts/guard-keys.mjs --all
+```
+
+Never commit `.env` files, keys or any file whose name contains `token` or `secret`; `.gitignore` excludes them,
+so do not give source files such names either. A line with a deliberately fake key-shaped value can end with
+the comment `guard-allow-secret`.
+
+## Style
+
+- Plain English in code, comments, CLI messages and docs. No em-dashes.
+- TypeScript in strict mode. Match the style of the surrounding code.
+- Tests for every behaviour change, including the failure cases.
+- Add a line to the "Unreleased" section of `CHANGELOG.md` for user-visible changes.
+
+## Publishing
+
+`npm publish` is blocked by a `prepublishOnly` script. Releases are made by the maintainer.
