@@ -20,7 +20,7 @@ Commands:
 - Package name `ng-upgrade-planner`, licence MIT.
 - Tests never hit the network: registry responses are recorded under test fixtures.
 - Fixtures contain only package.json and lockfiles from open-source apps, each with source and licence noted.
-- Never publish to npm and never make the GitHub repo public: both are Sponsor gates.
+- Never publish to npm: Sponsor gate. The GitHub repo is public (Sponsor decision, 2026-10-02).
 - Never commit credentials. `.gitignore` excludes `.env*`, keys, and any name containing `token` or `secret`
   (so do not give source files such names). Pre-commit guard: `git config core.hooksPath .githooks`.
 

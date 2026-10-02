@@ -1,6 +1,6 @@
 ---
-status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); GitHub CI passed on Node.js 20 and 22 (commit 59b7cc6), not published, repository still private, package version still 0.1.0
-sponsor_action: decide on the gates - make the GitHub repository public, publish to npm (including which version number to publish), and confirm the 8-week usage review
+status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); GitHub CI passed on Node.js 20 and 22 (commit 59b7cc6), not published, repository public since 2026-10-02, package version still 0.1.0
+sponsor_action: decide on the remaining gates - publish to npm (including which version number to publish), and confirm the 8-week usage review
 kill_review: none scheduled; proposed for the Sponsor to confirm - review usage 8 weeks after the first npm publish
 success_metric: v0.2 - the scan finds every synthetic true positive and nothing on the synthetic negative cases, the JSON plan is snapshot-tested on the 5 fixtures, the skill passes its spec and CLI checks, and each fixture plans with the scan on in under 30 s with a warm cache (met locally); the v0.1 metric (5 fixtures, 2 plans checked by the development agent, under 30 s) still holds
 ---
@@ -67,6 +67,6 @@ Not verified yet:
 - v1: npm publish and an article written by the Sponsor.
 
 ## Sponsor gates
-- Making the GitHub repo public.
+- Making the GitHub repo public: approved and done on 2026-10-02.
 - Publishing to npm, including the version number (package.json still says 0.1.0).
 - Confirming the proposed usage review 8 weeks after the npm publish.
