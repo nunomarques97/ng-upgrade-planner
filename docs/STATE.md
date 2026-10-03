@@ -1,7 +1,7 @@
 ---
-status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); GitHub CI passed on Node.js 20 and 22 (commit 59b7cc6), not published, repository public since 2026-10-02, package version still 0.1.0
-sponsor_action: decide on the remaining gates - publish to npm (including which version number to publish), and confirm the 8-week usage review
-kill_review: none scheduled; proposed for the Sponsor to confirm - review usage 8 weeks after the first npm publish
+status: v0.2 built and checked locally (removed-API scan, JSON plan output, Agent Skill); published to npm as ng-upgrade-planner 0.2.0 on 2026-10-03 (first public version; npx ng-upgrade-planner checked on a real Angular 15 app), repository public since 2026-10-02
+sponsor_action: confirm the usage review on 2026-11-28 (8 weeks after the npm publish); write the v1 article
+kill_review: proposed 2026-11-28 (8 weeks after the 2026-10-03 npm publish), awaiting Sponsor confirmation
 success_metric: v0.2 - the scan finds every synthetic true positive and nothing on the synthetic negative cases, the JSON plan is snapshot-tested on the 5 fixtures, the skill passes its spec and CLI checks, and each fixture plans with the scan on in under 30 s with a warm cache (met locally); the v0.1 metric (5 fixtures, 2 plans checked by the development agent, under 30 s) still holds
 ---
 
@@ -77,11 +77,12 @@ Not verified yet:
   works only after the npm publish.
 
 ## Roadmap
-- v0.1: the CLI, fixtures, reports, open-source docs and CI. Not published.
-- v0.2: scan for APIs removed in each hop; JSON plan output; an Agent Skill (open SKILL.md format) that executes the plan one hop at a time. Built locally, not published.
+- v0.1: the CLI, fixtures, reports, open-source docs and CI. Never published on its own; shipped in 0.2.0.
+- v0.2: scan for APIs removed in each hop; JSON plan output; an Agent Skill (open SKILL.md format) that executes the plan one hop at a time. Published to npm as 0.2.0 on 2026-10-03.
 - v1: npm publish and an article written by the Sponsor.
 
 ## Sponsor gates
 - Making the GitHub repo public: approved and done on 2026-10-02.
-- Publishing to npm, including the version number (package.json still says 0.1.0).
+- Publishing to npm: 0.2.0 approved and published on 2026-10-03. Every later publish is a separate Sponsor gate.
+  npm uses staged publishing: a publish waits until the Sponsor approves it with 2FA on npmjs.com.
 - Confirming the proposed usage review 8 weeks after the npm publish.
