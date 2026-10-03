@@ -34,14 +34,14 @@ report lists confirmed and unverified results apart. A wrong "compatible" costs 
 without peer data could.
 
 **Bundled, cited data.** The steps are a copy of the data behind angular.dev/update-guide, with its commit,
-date and MIT attribution, parsed without running it. The removed-API list (`src/data/removed-apis.ts`) holds 68
-entries for Angular 9 to 22, taken from the Angular and Angular CLI CHANGELOGs and the update guide data. Each
-entry cites its source URL and records the replacement and whether the official `ng update` migration fixes
-it, backed by that release's migration list, or "unknown" when no source says. Angular 12 has no entry: its
-breaking changes are behaviour and platform changes. Left out, with reasons in `REMOVED_API_EXCLUDED` (36
-items): behaviour, timing and typing changes; members of injected instances, which need type information;
-option values usually held in variables; changes outside `@angular/*` such as zone.js and builder options; and
-names no official document confirms.
+date and MIT attribution, parsed without running it. The removed-API list (`src/data/removed-apis.ts`) holds 105
+entries for Angular 9 to 22, taken from the Angular and Angular CLI CHANGELOGs, the CLI release notes for 9 to 11
+and the update guide data. 36 are `angular.json` builder options or builders, counted only in targets of the
+affected builder (heuristic under known wrappers). Each entry cites its source URL and records the replacement and whether the official
+`ng update` migration fixes it, backed by that release's migration list, or "unknown" when no source says. Left
+out, with reasons in `REMOVED_API_EXCLUDED` (69 items): behaviour, timing and typing changes; members of
+injected instances, which need type information; option values usually held in variables; changes outside
+`@angular/*` such as zone.js and CLI flags; and names no official document confirms.
 
 **Confirmed versus heuristic findings.** Import-matched symbols and parsed configuration properties are
 confirmed. Template patterns are text matches without the Angular template parser, so they are heuristic and

@@ -56,9 +56,52 @@ describe('scan with the bundled removed-API data', () => {
         major: entry.major,
         replacement: entry.replacement,
         migration: entry.migration,
-        confidence: entry.kind === 'template' ? 'heuristic' : 'confirmed',
+        // Template text matches and options under a wrapping third-party builder are heuristic.
+        confidence: entry.kind === 'template' || finding.reason !== undefined ? 'heuristic' : 'confirmed',
       });
     }
+  });
+
+  it('finds the removed builder options and builders of the synthetic angular.json, scoped to their builder', () => {
+    const found = result.findings
+      .filter((finding) => finding.file === 'angular.json')
+      .map((finding) => `${finding.line} ${finding.entryId} ${finding.major}`);
+    expect(found.sort((a, b) => parseInt(a, 10) - parseInt(b, 10) || a.localeCompare(b))).toEqual([
+      '4 v16-cli-default-project 16',
+      '5 v16-cli-default-collection 16',
+      '9 v16-cli-default-collection 16',
+      // extractCss in the browser target: options and a configurations entry.
+      '14 v13-build-angular-extract-css 13',
+      '16 v13-build-angular-extract-css 13',
+      // browserTarget in the dev-server target: options and a configurations entry.
+      '26 v19-build-angular-browser-target 19',
+      '28 v19-build-angular-browser-target 19',
+      // browserTarget in the extract-i18n target: a configurations entry and options.
+      '33 v19-build-angular-browser-target 19',
+      '34 v19-build-angular-browser-target 19',
+      '43 v13-build-angular-tslint-builder 13',
+      // extractCss in a configurations entry under the "targets" alias.
+      '62 v13-build-angular-extract-css 13',
+      // Options under third-party builders that extend the Angular builders.
+      '67 v13-build-angular-extract-css 13',
+      '71 v19-build-angular-browser-target 19',
+    ]);
+  });
+
+  it('gives no builder finding outside the affected builders', () => {
+    // Root and project level keys, a target without a builder, the third-party builders and a
+    // non-string builder use the same option names: none of them counts.
+    const lines = [10, 14, 17, 22, 38, 39, 40, 47, 48, 51, 52, 76];
+    const builderEntries = new Set(
+      REMOVED_APIS.entries.filter((entry) => entry.kind === 'config' && entry.builders !== undefined).map((entry) => entry.id),
+    );
+    const unexpected = result.findings.filter(
+      (finding) => finding.file === 'angular.json' && builderEntries.has(finding.entryId) && lines.includes(finding.line),
+    );
+    // Line 14 holds a real extractCss option at column 51 and a nested one that must not count.
+    expect(unexpected.map((finding) => `${finding.line}:${finding.column} ${finding.entryId}`)).toEqual([
+      '14:51 v13-build-angular-extract-css',
+    ]);
   });
 
   it('reports nothing in the files that must stay clean', () => {

@@ -61,7 +61,11 @@ export interface RemovedApiSource {
 interface RemovedApiBase {
   /** Stable identifier, lowercase words joined by hyphens. */
   id: string;
-  /** Import specifier the API belongs to: an @angular/* package or one of its entry points. */
+  /**
+   * Import specifier the API belongs to: an @angular/* package or one of its entry points. Builder
+   * entries name the builder package instead (@angular-devkit/build-angular, @angular/build or
+   * @angular-devkit/build-ng-packagr).
+   */
   package: string;
   /** Short human-readable name of the API, as shown in reports. */
   label: string;
@@ -108,13 +112,42 @@ export interface RemovedTemplateEntry extends RemovedApiBase {
 }
 
 /** A JSON property in a workspace or TypeScript configuration file. */
-export interface RemovedConfigEntry extends RemovedApiBase {
+export interface RemovedConfigPathEntry extends RemovedApiBase {
   kind: 'config';
   /** angular.json, or any tsconfig*.json file. */
   file: 'angular.json' | 'tsconfig';
   /** Property paths from the document root; '*' matches any single key. */
   paths: readonly (readonly string[])[];
+  builders?: never;
+  option?: never;
 }
+
+/**
+ * An option of an angular.json target, counted only when the target's "builder" is one of
+ * `builders`. It matches in the target's "options" and in every entry of its "configurations".
+ */
+export interface RemovedBuilderOptionEntry extends RemovedApiBase {
+  kind: 'config';
+  file: 'angular.json';
+  /** Full builder names, for example @angular-devkit/build-angular:dev-server. */
+  builders: readonly string[];
+  /** Option key, for example browserTarget. */
+  option: string;
+  paths?: never;
+}
+
+/** A removed builder: any angular.json target whose "builder" is one of `builders`. */
+export interface RemovedBuilderEntry extends RemovedApiBase {
+  kind: 'config';
+  file: 'angular.json';
+  /** Full builder names, for example @angular-devkit/build-angular:tslint. */
+  builders: readonly string[];
+  paths?: never;
+  option?: never;
+}
+
+/** A configuration entry: a property path, a builder option or a builder name. */
+export type RemovedConfigEntry = RemovedConfigPathEntry | RemovedBuilderOptionEntry | RemovedBuilderEntry;
 
 export type RemovedApiEntry = RemovedSymbolEntry | RemovedTemplateEntry | RemovedConfigEntry;
 

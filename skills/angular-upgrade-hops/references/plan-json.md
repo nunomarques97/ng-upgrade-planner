@@ -112,7 +112,7 @@ In the paths below, `[]` stands for every element of an array.
 | `hops[].removedApis[].line` | integer | Line, from 1. |
 | `hops[].removedApis[].column` | integer | Column, from 1. |
 | `hops[].removedApis[].id` | string | Id of the bundled removed-API entry that matched. |
-| `hops[].removedApis[].package` | string | Angular package or entry point of the API. |
+| `hops[].removedApis[].package` | string | Angular package or entry point of the API. For an `angular.json` builder option or builder it is the builder package, for example `"@angular-devkit/build-angular"`, `"@angular/build"` or `"@angular-devkit/build-ng-packagr"`. |
 | `hops[].removedApis[].api` | string | The symbol, template pattern or configuration property. |
 | `hops[].removedApis[].change` | string | `"removed"` or `"breaking"`. |
 | `hops[].removedApis[].replacement` | string | What to use instead. |

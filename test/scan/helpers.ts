@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import type {
   RemovedApiData,
   RemovedApiEntry,
-  RemovedConfigEntry,
+  RemovedBuilderEntry,
+  RemovedBuilderOptionEntry,
+  RemovedConfigPathEntry,
   RemovedSymbolEntry,
   RemovedTemplateEntry,
 } from '../../src/data/types.js';
@@ -40,8 +42,16 @@ function template(fields: Base & Pick<RemovedTemplateEntry, 'pattern'>): Removed
   return { ...base(fields), kind: 'template', ...fields };
 }
 
-function config(fields: Base & Pick<RemovedConfigEntry, 'file' | 'paths'>): RemovedConfigEntry {
+function config(fields: Base & Pick<RemovedConfigPathEntry, 'file' | 'paths'>): RemovedConfigPathEntry {
   return { ...base(fields), kind: 'config', ...fields };
+}
+
+function builderOption(fields: Base & Pick<RemovedBuilderOptionEntry, 'builders' | 'option'>): RemovedBuilderOptionEntry {
+  return { ...base(fields), kind: 'config', file: 'angular.json', ...fields };
+}
+
+function builder(fields: Base & Pick<RemovedBuilderEntry, 'builders'>): RemovedBuilderEntry {
+  return { ...base(fields), kind: 'config', file: 'angular.json', ...fields };
 }
 
 /** Synthetic dataset for the scan tests, independent of the bundled data. */
@@ -111,6 +121,28 @@ export const TEST_DATA: RemovedApiData = {
         ['projects', '*', 'cli', 'defaultCollection'],
       ],
       major: 16,
+    }),
+    builderOption({
+      id: 'extract-css',
+      package: '@angular-devkit/build-angular',
+      builders: ['@angular-devkit/build-angular:browser'],
+      option: 'extractCss',
+      major: 13,
+    }),
+    builderOption({
+      id: 'browser-target',
+      package: '@angular-devkit/build-angular',
+      builders: ['@angular-devkit/build-angular:dev-server', '@angular-devkit/build-angular:extract-i18n'],
+      option: 'browserTarget',
+      major: 19,
+      migration: 'yes',
+    }),
+    builder({
+      id: 'tslint-builder',
+      package: '@angular-devkit/build-angular',
+      builders: ['@angular-devkit/build-angular:tslint'],
+      major: 13,
+      migration: 'no',
     }),
   ],
 };

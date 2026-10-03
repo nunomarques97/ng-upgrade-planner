@@ -214,9 +214,13 @@ It skips `node_modules`, `dist`, `out-tsc`, `.angular`, `coverage`, `.git`, the 
 `angular.json` and everything your `.gitignore` files exclude. Symbolic links are not followed, and files over
 1 MB are not read.
 
-The findings come from a bundled list of 68 changes in Angular 9 to 22. Each entry cites the official Angular
-document that states the change (the Angular or Angular CLI CHANGELOG, or the angular.dev update guide data) and
-records the replacement and whether the official `ng update` migration for that major fixes it. Each finding is
+The findings come from a bundled list of 105 changes in Angular 9 to 22. Each entry cites the official Angular
+document that states the change (the Angular or Angular CLI CHANGELOG, the Angular CLI release notes for 9 to 11,
+or the angular.dev update guide data) and records the replacement and whether the official `ng update` migration
+for that major fixes it. 36 of them are `angular.json` builder options and builders removed by the Angular CLI,
+such as `extractCss` (13) or `browserTarget` (19); an option counts only in a target whose `builder` is the
+affected one, in its `options` and in every entry of its `configurations`. Under the known wrappers
+`@angular-builders/custom-webpack` and `ngx-build-plus` the same options are reported as heuristic findings. Each finding is
 attached to the hop where it must be fixed and shows `file:line`, the API, the replacement and "fixed by ng
 update migration: yes, no or unknown". Findings for majors you are already past, or beyond the target, are
 counted but not listed.
@@ -297,7 +301,9 @@ download it that way.
 - **The removed-API scan finds only what its data lists.** The data covers Angular 9 to 22 and only changes a
   source scan can see: a removed or renamed export, a decorator or method option, a template pattern or a
   configuration property. Behaviour and timing changes, typing changes the compiler reports, methods called on
-  injected instances and packages outside `@angular/*` (such as zone.js or builder options) are not covered.
+  injected instances and packages outside `@angular/*` (such as zone.js) are not covered. Of the Angular CLI
+  changes, only `angular.json` options and builders are: command-line flags, environment variables and
+  options that only third-party builders define are not.
 - **The scan has no type information.** A local variable that shadows an imported name is still matched. An
   API that your code re-exports from its own file is found at the re-export, not where it is used, and an API
   reached only through a variable is missed.

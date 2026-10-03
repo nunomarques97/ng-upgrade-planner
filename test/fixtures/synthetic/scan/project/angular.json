@@ -7,14 +7,71 @@
     "app": {
       "root": "",
       "cli": { "defaultCollection": "@schematics/angular", },
+      "extractCss": true,
       "architect": {
         "build": {
-          "options": { "outputPath": "build/app" }
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": { "outputPath": "build/app", "extractCss": true, "nested": { "extractCss": true } },
+          "configurations": {
+            "production": { "extractCss": false },
+            "development": { "optimization": false }
+          }
         },
         "server": {
-          "options": { "outputPath": { "base": "out/server" } }
+          // No builder: nothing in this target counts.
+          "options": { "outputPath": { "base": "out/server" }, "extractCss": true }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": { "browserTarget": "app:build" },
+          "configurations": {
+            "production": { "browserTarget": "app:build:production" }
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "configurations": { "ci": { "browserTarget": "app:build" } },
+          "options": { "browserTarget": "app:build" }
+        },
+        // A third-party builder with the same option names: no finding.
+        "custom-serve": {
+          "builder": "@custom/builders:dev-server",
+          "options": { "browserTarget": "app:build", "extractCss": true },
+          "configurations": { "production": { "browserTarget": "app:build:production" } }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": { "tsConfig": [] }
+        },
+        "custom-lint": {
+          "builder": "@custom/builders:tslint",
+          "options": { "extractCss": true }
+        },
+        "odd": {
+          "builder": 1,
+          "options": { "browserTarget": "app:build" }
+        }
+      }
+    },
+    "lib": {
+      "root": "projects/lib",
+      // "targets" is an alias of "architect".
+      "targets": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "configurations": { "ci": { "extractCss": true } }
+        },
+        // Third-party builders that extend an Angular builder: heuristic findings.
+        "build-webpack": {
+          "builder": "@angular-builders/custom-webpack:browser",
+          "options": { "extractCss": true }
+        },
+        "serve-plus": {
+          "builder": "ngx-build-plus:dev-server",
+          "options": { "browserTarget": "lib:build" }
         }
       }
     }
-  }
+  },
+  "browserTarget": "app:build"
 }

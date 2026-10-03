@@ -11,7 +11,7 @@ All notable changes to this project are listed here. The format follows
 - Removed-API scan: the project's own TypeScript sources, component templates (external and inline),
   `angular.json` and `tsconfig*.json` files are checked for Angular APIs removed or changed in a breaking way in
   each hop. It skips `node_modules`, build output, caches and everything `.gitignore` excludes.
-- Bundled removed-API data for Angular 9 to 22 (68 entries). Every entry cites the official Angular document
+- Bundled removed-API data for Angular 9 to 22 (105 entries). Every entry cites the official Angular document
   that states the change and records the replacement and whether the official `ng update` migration fixes it.
 - Each finding is attached to the hop where it must be fixed, with `file:line`, the API, the replacement and
   "fixed by ng update migration: yes, no or unknown". TypeScript findings count only when the symbol is imported
@@ -19,6 +19,9 @@ All notable changes to this project are listed here. The format follows
   verified".
 - Removed-API findings add to each hop's effort: 1 point per distinct API the migration fixes, 3 points per
   distinct API it does not fix or may not fix.
+- The removed-API data covers `angular.json` builder options and builders removed by the Angular CLI in 10 to
+  22 (36 of the entries), such as `extractCss` (13) and `browserTarget` (19). An option counts only in a target
+  whose `builder` is the affected one, in `options` and every `configurations` entry.
 - `--no-scan` turns the scan off.
 - `--json` prints the plan as JSON on stdout instead of the terminal summary, and every run that writes reports
   also writes `ng-upgrade-plan.json`. The format has a schema version (1) and is documented in

@@ -139,7 +139,54 @@ describe('config scan', () => {
       'angular.json:4:3 default-project confirmed',
       'angular.json:5:12 default-collection confirmed',
       'angular.json:9:16 default-collection confirmed',
+      // Builder options in "options" and in "configurations" entries, under architect and targets.
+      'angular.json:14:51 extract-css confirmed',
+      'angular.json:16:29 extract-css confirmed',
+      'angular.json:26:24 browser-target confirmed',
+      'angular.json:28:29 browser-target confirmed',
+      'angular.json:33:39 browser-target confirmed',
+      'angular.json:34:24 browser-target confirmed',
+      // A removed builder points at the target's "builder" key.
+      'angular.json:43:11 tslint-builder confirmed',
+      'angular.json:62:39 extract-css confirmed',
+      // Third-party builders that extend an Angular builder.
+      'angular.json:67:24 extract-css heuristic',
+      'angular.json:71:24 browser-target heuristic',
     ]);
+  });
+
+  it('counts builder options only directly in the options of a target with a listed builder', () => {
+    const lines = result.findings.filter((finding) => finding.file === 'angular.json').map((finding) => finding.line);
+    // 10: project level; 14 (nested object) and 17: not a listed option; 22: target without a builder;
+    // 38 to 40 and 47: a third-party builder; 51: a builder that is not a string; 76: workspace level.
+    for (const line of [10, 17, 22, 38, 39, 40, 46, 47, 51, 52, 76]) expect(lines, `line ${line}`).not.toContain(line);
+    expect(lines.filter((line) => line === 14)).toEqual([14]);
+  });
+
+  it('copies the entry details to builder findings and keeps their major', () => {
+    const byId = (id: string) => result.findings.find((finding) => finding.entryId === id);
+    expect(byId('extract-css')).toEqual({
+      file: 'angular.json',
+      line: 14,
+      column: 51,
+      entryId: 'extract-css',
+      package: '@angular-devkit/build-angular',
+      api: 'extract-css',
+      change: 'removed',
+      major: 13,
+      replacement: 'instead of extract-css',
+      migration: 'unknown',
+      confidence: 'confirmed',
+    });
+    expect(byId('browser-target')).toMatchObject({ major: 19, migration: 'yes', confidence: 'confirmed' });
+    expect(byId('tslint-builder')).toMatchObject({ major: 13, migration: 'no', confidence: 'confirmed' });
+  });
+
+  it('marks options under a third-party builder that extends an Angular builder as heuristic, with a reason', () => {
+    const finding = result.findings.find((item) => item.file === 'angular.json' && item.line === 67);
+    expect(finding).toMatchObject({ entryId: 'extract-css', major: 13, confidence: 'heuristic' });
+    expect(finding?.reason).toContain('@angular-builders/custom-webpack:browser');
+    expect(finding?.reason).toContain('@angular-devkit/build-angular:browser');
   });
 
   it('finds tsconfig properties in any tsconfig*.json', () => {
@@ -198,6 +245,23 @@ describe('edge cases', () => {
       expect(edge.unscanned[0]?.reason).toBe('its templateUrl points outside the project folder');
       expect(edge.unscanned[1]?.reason).toMatch(/^could not be parsed \(.+at offset \d+\)$/);
       expect(edge.findings.map(brief)).toEqual(['src/app/ok.ts:1:10 renderer confirmed']);
+    } finally {
+      removeFolder(project);
+    }
+  });
+
+  it('reports a malformed angular.json as unscanned when builder entries apply', async () => {
+    const project = tempFolder('ngup-scan-workspace-');
+    try {
+      writeFiles(project, {
+        'angular.json':
+          '{ "projects": { "app": { "architect": { "serve": { "builder": "@angular-devkit/build-angular:dev-server", "options": { "browserTarget": } } } } } }',
+        'src/app/ok.ts': HIT,
+      });
+      const broken = await scan(project, TEST_DATA);
+      expect(broken.unscanned.map((item) => item.file)).toEqual(['angular.json']);
+      expect(broken.unscanned[0]?.reason).toMatch(/^could not be parsed \(.+at offset \d+\)$/);
+      expect(broken.findings.map(brief)).toEqual(['src/app/ok.ts:1:10 renderer confirmed']);
     } finally {
       removeFolder(project);
     }
