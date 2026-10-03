@@ -4,7 +4,7 @@ All notable changes to this project are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-10-03
 
 ### Added
 
@@ -36,7 +36,7 @@ All notable changes to this project are listed here. The format follows
   Markdown and HTML summary tables have a removed-API column.
 - `--out-dir` now also receives `ng-upgrade-plan.json`.
 
-## [0.1.0] - not yet released
+## [0.1.0] - not published; its changes ship in 0.2.0
 
 First version.
 
