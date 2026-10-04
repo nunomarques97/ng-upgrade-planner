@@ -1,13 +1,14 @@
-// Scan of a project's own source for Angular APIs removed or changed in a later major.
+// Scan of a project's own source for Angular APIs removed or changed in a later major, for APIs
+// deprecated with an announced removal, and for RxJS APIs that break in RxJS 7.
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { RemovedApiData } from '../data/types.js';
+import type { DeprecatedApiEntry, RemovedApiData, RemovedApiEntry, RxjsApiEntry, ScanDataEntry } from '../data/types.js';
 import { stripBom } from '../project/own.js';
 import { matchConfig } from './config.js';
 import { buildMatchers, type Matchers, type RawMatch } from './matchers.js';
 import { matchTemplate } from './template.js';
 import { LineIndex, shortMessage } from './text.js';
-import type { ScanFinding, ScanOptions, ScanResult, UnscannedFile } from './types.js';
+import type { DeprecationScanFinding, RxjsScanFinding, ScanFinding, ScanOptions, ScanResult, UnscannedFile } from './types.js';
 import { scanTypeScript } from './typescript-source.js';
 import { walkProject, type ProjectFile } from './walk.js';
 
@@ -19,8 +20,18 @@ export const DEFAULT_MAX_FILE_BYTES = 1024 * 1024;
 /** External templates are read when a component points at them or their name says so. */
 const COMPONENT_TEMPLATE = /\.component\.html$/;
 
-function toFinding(file: string, lines: LineIndex, match: RawMatch): ScanFinding {
-  const { entry } = match;
+function isDeprecation(entry: ScanDataEntry): entry is DeprecatedApiEntry {
+  return 'removalMajor' in entry;
+}
+
+function isRxjs(entry: ScanDataEntry): entry is RxjsApiEntry {
+  return 'rxjsMajor' in entry;
+}
+
+/** An import of rxjs or one of its entry points, as written in a module specifier. */
+const RXJS_IMPORT = /['"]rxjs(?:\/[^'"]*)?['"]/;
+
+function toFinding(file: string, lines: LineIndex, match: RawMatch, entry: RemovedApiEntry): ScanFinding {
   const { line, column } = lines.position(match.offset);
   const api = entry.label;
   const finding: ScanFinding = {
@@ -40,18 +51,54 @@ function toFinding(file: string, lines: LineIndex, match: RawMatch): ScanFinding
   return finding;
 }
 
+function toDeprecation(file: string, lines: LineIndex, match: RawMatch, entry: DeprecatedApiEntry): DeprecationScanFinding {
+  const { line, column } = lines.position(match.offset);
+  const finding: DeprecationScanFinding = {
+    file,
+    line,
+    column,
+    entryId: entry.id,
+    package: entry.package,
+    api: entry.label,
+    deprecatedIn: entry.deprecatedIn,
+    removalMajor: entry.removalMajor,
+    replacement: entry.replacement,
+    confidence: match.heuristic === undefined ? 'confirmed' : 'heuristic',
+  };
+  if (match.heuristic !== undefined) finding.reason = match.heuristic;
+  return finding;
+}
+
+function toRxjs(file: string, lines: LineIndex, match: RawMatch, entry: RxjsApiEntry): RxjsScanFinding {
+  const { line, column } = lines.position(match.offset);
+  return {
+    file,
+    line,
+    column,
+    entryId: entry.id,
+    package: entry.package,
+    api: entry.label,
+    change: entry.change,
+    rxjsMajor: entry.rxjsMajor,
+    replacement: entry.replacement,
+  };
+}
+
 function compareText(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function compareFindings(a: ScanFinding, b: ScanFinding): number {
+type AnyFinding = ScanFinding | DeprecationScanFinding | RxjsScanFinding;
+
+function compareFindings(a: AnyFinding, b: AnyFinding): number {
   return compareText(a.file, b.file) || a.line - b.line || a.column - b.column || compareText(a.entryId, b.entryId);
 }
 
 /**
  * Scans TypeScript sources, component templates, angular.json and tsconfig files under
- * `projectDir`. Never throws for a single file: unreadable or unparsable files are listed in
- * `unscanned`. Rejects only when the project folder itself cannot be listed.
+ * `projectDir` for the entries of `data`, `options.deprecations` and `options.rxjs`. Never throws
+ * for a single file: unreadable or unparsable files are listed in `unscanned`. Rejects only when
+ * the project folder itself cannot be listed.
  */
 export async function scan(projectDir: string, data: RemovedApiData, options: ScanOptions = {}): Promise<ScanResult> {
   const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
@@ -61,8 +108,15 @@ export async function scan(projectDir: string, data: RemovedApiData, options: Sc
   if (walk.unscanned.some((item) => item.file === '.')) {
     throw new Error(`Cannot list the project folder ${root}`);
   }
-  const matchers: Matchers = buildMatchers(data);
+  const matchers: Matchers = buildMatchers([
+    ...data.entries,
+    ...(options.deprecations?.entries ?? []),
+    ...(options.rxjs?.entries ?? []),
+  ]);
+  const withRxjs = (options.rxjs?.entries.length ?? 0) > 0;
   const findings: ScanFinding[] = [];
+  const deprecations: DeprecationScanFinding[] = [];
+  const rxjs: RxjsScanFinding[] = [];
   const unscanned: UnscannedFile[] = [...walk.unscanned];
   const seen = new Set<string>();
   let filesScanned = 0;
@@ -74,7 +128,10 @@ export async function scan(projectDir: string, data: RemovedApiData, options: Sc
       const key = `${match.offset} ${match.entry.id}`;
       if (seen.has(`${file} ${key}`)) continue;
       seen.add(`${file} ${key}`);
-      findings.push(toFinding(file, lines, match));
+      const { entry } = match;
+      if (isDeprecation(entry)) deprecations.push(toDeprecation(file, lines, match, entry));
+      else if (isRxjs(entry)) rxjs.push(toRxjs(file, lines, match, entry));
+      else findings.push(toFinding(file, lines, match, entry));
     }
   };
 
@@ -104,8 +161,8 @@ export async function scan(projectDir: string, data: RemovedApiData, options: Sc
     if (text === null) continue;
     try {
       if (item.kind === 'typescript') {
-        // Without an Angular import nothing in the file can be confirmed, so it is not parsed.
-        if (text.includes('@angular/')) {
+        // Without an Angular or RxJS import nothing in the file can be confirmed, so it is not parsed.
+        if (text.includes('@angular/') || (withRxjs && RXJS_IMPORT.test(text))) {
           const result = scanTypeScript(text, matchers);
           record(item.file, text, result.matches);
           for (const url of result.templateUrls) {
@@ -136,6 +193,8 @@ export async function scan(projectDir: string, data: RemovedApiData, options: Sc
   }
 
   findings.sort(compareFindings);
+  deprecations.sort(compareFindings);
+  rxjs.sort(compareFindings);
   unscanned.sort((a, b) => compareText(a.file, b.file) || compareText(a.reason, b.reason));
-  return { findings, unscanned, filesScanned };
+  return { findings, deprecations, rxjs, unscanned, filesScanned };
 }

@@ -1,0 +1,8 @@
+<textarea matInput matTextareaAutosize matAutosizeMinRows="2"></textarea>
+<textarea matInput cdkTextareaAutosize cdkAutosizeMinRows="2"></textarea>
+<mat-list-option [checkboxPosition]="'before'" value="a">A</mat-list-option>
+<mat-list-option togglePosition="before" value="b">B</mat-list-option>
+<app-option checkboxPosition="before"></app-option>
+<button [cdkCopyToClipboard]="text" (copied)="done($event)">Copy</button>
+<button (copied)="done($event)">Other</button>
+<!-- <textarea matTextareaAutosize></textarea> -->

@@ -4,9 +4,9 @@ import semver from 'semver';
 import { UPDATE_GUIDE } from '../data/update-steps.js';
 import type { UpdateGuideData } from '../data/types.js';
 import { describeCause } from '../project/errors.js';
-import type { ProjectDependency, ProjectInfo } from '../project/types.js';
+import type { NodeEngine, ProjectDependency, ProjectInfo } from '../project/types.js';
 import type { PackageResult } from '../registry/types.js';
-import type { ScanFinding } from '../scan/types.js';
+import type { DeprecationScanFinding, RxjsScanFinding, ScanFinding } from '../scan/types.js';
 import {
   alignRequiredVersions,
   angularPeers,
@@ -31,19 +31,24 @@ import {
   type OkResult,
 } from './evidence.js';
 import { isAngularPackage, isFrameworkPackage, isLockstepPackage } from './framework.js';
-import { hopRequirements } from './requirements.js';
+import { hopRequirements, hopToolchain } from './requirements.js';
 import { encodedVersion, hopSteps } from './steps.js';
 import {
   PLAN_SCHEMA,
+  type DeprecationFinding,
   type Fact,
   type FrameworkPackage,
   type Hop,
   type Library,
   type PackageSource,
+  type PlanDeprecations,
   type PlanOptions,
   type PlanScan,
+  type PlanRxjs,
   type PlanScanInput,
   type RemovedApiFinding,
+  type Requirement,
+  type RxjsFinding,
   type UnclassifiedDependency,
   type UnverifiedItem,
   type UpgradePlan,
@@ -153,11 +158,22 @@ function classify(dependency: ProjectDependency, result: OkResult): Library | un
   };
 }
 
-function nodeFact(nodeVersion: string | null | undefined): Fact<string | null> {
+/** The local Node.js version: context only, it never decides a status. */
+function localNodeFact(nodeVersion: string | null | undefined): Fact<string | null> {
   if (nodeVersion === undefined || nodeVersion === null) return unverified(null, 'the Node.js version was not provided', 'option');
   const version = semver.valid(nodeVersion.trim().replace(/^v/, ''));
   if (version === null) return unverified(null, `"${nodeVersion}" is not a valid Node.js version`, 'option');
   return confirmed(version, 'option');
+}
+
+/** The project's engines.node, which decides the Node.js status of each hop. */
+function enginesFact(engine: NodeEngine): Fact<string | null> {
+  if (engine.status === 'declared' && engine.range !== null) return confirmed(engine.range, 'package-json');
+  if (engine.status === 'invalid') {
+    const text = engine.range !== null ? ` ${JSON.stringify(engine.range)}` : '';
+    return unverified(engine.range, `engines.node${text} in package.json is not a valid version range`, 'package-json');
+  }
+  return unverified(null, 'package.json has no engines.node');
 }
 
 function planFinding(finding: ScanFinding): RemovedApiFinding {
@@ -177,50 +193,193 @@ function planFinding(finding: ScanFinding): RemovedApiFinding {
   };
 }
 
+function planDeprecation(finding: DeprecationScanFinding): DeprecationFinding {
+  return {
+    file: finding.file,
+    line: finding.line,
+    column: finding.column,
+    entryId: finding.entryId,
+    package: finding.package,
+    api: finding.api,
+    deprecatedIn: finding.deprecatedIn,
+    removalMajor: finding.removalMajor,
+    replacement: finding.replacement,
+    confidence: finding.confidence,
+    reason: finding.confidence === 'heuristic' ? (finding.reason ?? 'found by text matching') : null,
+  };
+}
+
+function planRxjs(finding: RxjsScanFinding): RxjsFinding {
+  return {
+    file: finding.file,
+    line: finding.line,
+    column: finding.column,
+    entryId: finding.entryId,
+    package: finding.package,
+    api: finding.api,
+    change: finding.change,
+    replacement: finding.replacement,
+  };
+}
+
+interface Attached<T> {
+  byHop: Map<number, T[]>;
+  attached: number;
+  notAttached: { atOrBelowCurrent: number; aboveTarget: number; noHop: number };
+}
+
+/** Puts each item in the hop whose target is `hopOf(item)`; items outside the plan are only counted. */
+function attach<S, T>(
+  items: readonly S[],
+  hopOf: (item: S) => number,
+  convert: (item: S) => T,
+  currentMajor: number,
+  hopMajors: readonly number[],
+  targetMajor: number,
+): Attached<T> {
+  const byHop = new Map<number, T[]>(hopMajors.map((major) => [major, []]));
+  const notAttached = { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 0 };
+  let attached = 0;
+  for (const item of items) {
+    const major = hopOf(item);
+    const hop = byHop.get(major);
+    if (major <= currentMajor) notAttached.atOrBelowCurrent++;
+    else if (major > targetMajor) notAttached.aboveTarget++;
+    else if (!hop) notAttached.noHop++;
+    else {
+      hop.push(convert(item));
+      attached++;
+    }
+  }
+  return { byHop, attached, notAttached };
+}
+
 /**
  * Attaches each scan finding to the hop where it must be fixed: the hop whose target major is the
- * major where the API is removed or breaks. Findings for majors at or below the installed one, above
- * the target, or without a hop are only counted.
+ * major where the API is removed or breaks. A deprecation finding is a warning in the hop before
+ * the announced removal: the hop whose target is the removal major minus 1. Findings for hops at or
+ * below the installed major, above the target, or without a stable release are only counted.
  */
 export function attachFindings(
   input: PlanScanInput | null | undefined,
   currentMajor: number,
   hopMajors: readonly number[],
   targetMajor: number,
-): { byHop: Map<number, RemovedApiFinding[]>; scan: PlanScan } {
-  const byHop = new Map<number, RemovedApiFinding[]>(hopMajors.map((major) => [major, []]));
-  const notAttached = { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 0 };
+): {
+  byHop: Map<number, RemovedApiFinding[]>;
+  deprecationsByHop: Map<number, DeprecationFinding[]>;
+  scan: Omit<PlanScan, 'rxjs'>;
+} {
+  const removed = attach(input?.result.findings ?? [], (finding) => finding.major, planFinding, currentMajor, hopMajors, targetMajor);
+  const deprecated = attach(
+    input?.result.deprecations ?? [],
+    (finding) => finding.removalMajor - 1,
+    planDeprecation,
+    currentMajor,
+    hopMajors,
+    targetMajor,
+  );
+  const deprecations: PlanDeprecations = {
+    coverage: input?.deprecations
+      ? { removalMajors: [...input.deprecations.removalMajors], retrieved: input.deprecations.retrieved }
+      : null,
+    findings: input?.result.deprecations.length ?? 0,
+    attached: deprecated.attached,
+    notAttached: deprecated.notAttached,
+  };
   if (!input) {
     return {
-      byHop,
-      scan: { status: 'off', coverage: null, filesScanned: 0, findings: 0, attached: 0, notAttached, unscanned: [] },
+      byHop: removed.byHop,
+      deprecationsByHop: deprecated.byHop,
+      scan: {
+        status: 'off',
+        coverage: null,
+        filesScanned: 0,
+        findings: 0,
+        attached: 0,
+        notAttached: removed.notAttached,
+        unscanned: [],
+        deprecations,
+      },
     };
   }
   const { result, coverage } = input;
-  let attached = 0;
-  for (const finding of result.findings) {
-    const hop = byHop.get(finding.major);
-    if (finding.major <= currentMajor) notAttached.atOrBelowCurrent++;
-    else if (finding.major > targetMajor) notAttached.aboveTarget++;
-    else if (!hop) notAttached.noHop++;
-    else {
-      hop.push(planFinding(finding));
-      attached++;
-    }
-  }
   const empty = result.filesScanned === 0 && result.unscanned.length === 0;
   return {
-    byHop,
+    byHop: removed.byHop,
+    deprecationsByHop: deprecated.byHop,
     scan: {
       status: empty ? 'no-source-files' : 'ran',
       coverage: { firstMajor: coverage.firstMajor, lastMajor: coverage.lastMajor, retrieved: coverage.retrieved },
       filesScanned: result.filesScanned,
       findings: result.findings.length,
-      attached,
-      notAttached,
+      attached: removed.attached,
+      notAttached: removed.notAttached,
       unscanned: result.unscanned.map((item) => ({ file: item.file, reason: item.reason })),
+      deprecations,
     },
   };
+}
+
+/** Every RxJS 6 release: a hop whose rxjs range does not meet it forces RxJS 7 or later. */
+const RXJS_6 = '>=6.0.0-0 <7.0.0-0';
+
+/**
+ * Whether a hop's @angular/core rxjs peer range accepts no RxJS 6 release. false when the release
+ * declares no rxjs peer; null when the range is unknown or cannot be parsed.
+ */
+export function forcesRxjs7(requirements: readonly Requirement[]): boolean | null {
+  const requirement = requirements.find((item) => item.name === 'rxjs');
+  if (!requirement) return false;
+  const range = requirement.range.value;
+  if (range === null || semver.validRange(range) === null) return null;
+  return !semver.intersects(range, RXJS_6, { includePrerelease: true });
+}
+
+/**
+ * How the RxJS findings relate to the plan. They count only when the installed rxjs is 6.x: as work
+ * in `forcedBy`, the first hop that accepts no RxJS 6, or else as a single advisory.
+ */
+export function rxjsResult(
+  input: PlanScanInput | null | undefined,
+  installed: Fact<string | null>,
+  forcedBy: number | null,
+  unknownHops: readonly number[],
+): { plan: PlanRxjs; required: RxjsFinding[] } {
+  const found = input?.result.rxjs ?? [];
+  const coverage = input?.rxjs ? { rxjsMajor: input.rxjs.rxjsMajor, retrieved: input.rxjs.retrieved } : null;
+  const version = installed.value;
+  const result = (status: PlanRxjs['status'], reason: string, forced: number | null = null, advisory: RxjsFinding[] = []): PlanRxjs => ({
+    coverage,
+    installed: version,
+    status,
+    forcedBy: forced,
+    uncheckedHops: [...unknownHops],
+    reason,
+    findings: found.length,
+    advisory,
+  });
+  if (!input || !coverage) {
+    return { plan: result('off', 'the source was not scanned for RxJS 7 breaking changes'), required: [] };
+  }
+  const major = version === null ? null : (semver.coerce(version)?.major ?? null);
+  if (major === null) {
+    const why = installed.source === 'none' ? 'rxjs is not a direct dependency' : 'the installed rxjs version is not known';
+    return { plan: result('not-applicable', `${why}, so RxJS 7 breaking changes are not shown`), required: [] };
+  }
+  if (major !== 6) {
+    const why = major > 6 ? 'already RxJS 7 or later' : 'older than RxJS 6, outside the data';
+    return { plan: result('not-applicable', `the installed rxjs ${version} is ${why}, so RxJS 7 breaking changes are not shown`), required: [] };
+  }
+  const findings = found.map(planRxjs);
+  if (forcedBy !== null) {
+    const reason = `the @angular/core rxjs peer range of Angular ${forcedBy} accepts no RxJS 6, so the installed rxjs ${version} must move to RxJS 7 or later in that hop`;
+    return { plan: result('required', reason, forcedBy), required: findings };
+  }
+  const unknown =
+    unknownHops.length > 0 ? `; the range of Angular ${unknownHops.join(', ')} could not be read, so that hop may still force it` : '';
+  const reason = `no hop of this plan forces RxJS 7: the @angular/core rxjs peer range of every hop read still accepts RxJS 6${unknown}. Fix these when moving rxjs to 7`;
+  return { plan: result('advisory', reason, null, findings), required: [] };
 }
 
 const SCAN_SUBJECT = 'removed-API scan';
@@ -255,8 +414,20 @@ function collectUnverified(plan: Omit<UpgradePlan, 'unverified'>): UnverifiedIte
   if (plan.hops.length > 0) {
     for (const item of scan.unscanned) add(null, `source ${item.file}`, `not scanned: ${item.reason}`);
   }
+  if (scan.rxjs.status === 'advisory' && scan.rxjs.uncheckedHops.length > 0) {
+    add(
+      null,
+      'RxJS 7 requirement',
+      `the @angular/core rxjs peer range of Angular ${scan.rxjs.uncheckedHops.join(', ')} could not be read, so the advisory RxJS findings may be required work`,
+    );
+  }
   for (const hop of plan.hops) {
     addFact(hop.to, `Angular ${hop.to} release`, hop.angular);
+    for (const check of [hop.toolchain.node, hop.toolchain.typescript]) {
+      const subject = `${check.name === 'node' ? 'Node.js' : 'TypeScript'} requirement`;
+      if (check.status === 'unverified') add(hop.to, subject, check.reason);
+      else addFact(hop.to, subject, check.range);
+    }
     if (hop.stepCoverage === 'not-covered') add(hop.to, 'update steps', hop.stepsNote);
     for (const requirement of hop.requirements) {
       const subject = `${requirement.name} requirement (${requirement.requiredBy})`;
@@ -281,6 +452,11 @@ function collectUnverified(plan: Omit<UpgradePlan, 'unverified'>): UnverifiedIte
     for (const finding of hop.removedApis) {
       if (finding.confidence === 'heuristic') {
         add(hop.to, `removed API ${finding.api} at ${finding.file}:${finding.line}`, finding.reason);
+      }
+    }
+    for (const finding of hop.deprecations) {
+      if (finding.confidence === 'heuristic') {
+        add(hop.to, `deprecated API ${finding.api} at ${finding.file}:${finding.line}`, finding.reason);
       }
     }
     for (const library of hop.libraries) {
@@ -392,8 +568,13 @@ export async function buildPlan(
   const fromVersions = new Map(candidates.map(({ library }) => [library.name, library.current]));
   const registryNames = new Map(candidates.map(({ library }) => [library.name, library.registryName]));
   const byRegistryName = new Map(project.dependencies.map((dependency) => [dependency.registryName, dependency]));
-  const node = nodeFact(options.nodeVersion);
+  const localNode = localNodeFact(options.nodeVersion);
+  const engines = enginesFact(project.nodeEngine);
+  const typescript = installedFact(byRegistryName.get('typescript'));
   const findings = attachFindings(options.scan, currentMajor, hopMajors, target.major);
+  const rxjsInstalled = installedFact(byRegistryName.get('rxjs'));
+  let rxjsForcedBy: number | null = null;
+  const rxjsUnknownHops: number[] = [];
 
   const hops: Hop[] = [];
   let after = encodedVersion(currentMajor, installed.minor);
@@ -402,14 +583,20 @@ export async function buildPlan(
     const stepData = hopSteps(guide, after, major, features);
     const requirements = hopRequirements(major, {
       lookup: (name) => results.get(name),
-      installed: (name) => (name === 'node' ? node : installedFact(byRegistryName.get(name))),
+      installed: (name) => installedFact(byRegistryName.get(name)),
     });
+    const toolchain = hopToolchain(major, { lookup: (name) => results.get(name), engines, typescript });
     const libraries = alignRequiredVersions(
       contexts.map((context) => evaluateLibrary(context, major, fromVersions.get(context.name)!)),
       registryNames,
       major,
     );
     for (const result of libraries) fromVersions.set(result.name, nextFrom(result));
+    const forces = forcesRxjs7(requirements);
+    if (forces === null) rxjsUnknownHops.push(major);
+    const forcedHere = rxjsForcedBy === null && forces === true;
+    if (forcedHere) rxjsForcedBy = major;
+    const rxjs = rxjsResult(options.scan, rxjsInstalled, forcedHere ? major : null, []);
     const hop = {
       from: previous,
       to: major,
@@ -420,8 +607,11 @@ export async function buildPlan(
       stepCoverage: stepData.coverage,
       stepsNote: stepData.note,
       requirements,
+      toolchain,
       libraries,
       removedApis: findings.byHop.get(major) ?? [],
+      deprecations: findings.deprecationsByHop.get(major) ?? [],
+      rxjs: forcedHere ? rxjs.required : [],
     };
     hops.push({ ...hop, effort: hopEffort(hop) });
     after = major * 100 + 99;
@@ -456,6 +646,7 @@ export async function buildPlan(
             ),
       major: currentMajor,
     },
+    toolchain: { engines, enginesStatus: project.nodeEngine.status, localNode },
     target: {
       major: target.major,
       source: target.source,
@@ -467,7 +658,7 @@ export async function buildPlan(
     libraries: candidates.map(({ library }) => library).sort(byName),
     unclassified: unclassified.sort(byName),
     effort: totalEffort(hops),
-    scan: findings.scan,
+    scan: { ...findings.scan, rxjs: rxjsResult(options.scan, rxjsInstalled, rxjsForcedBy, rxjsUnknownHops).plan },
     updateGuide: {
       url: guide.source.url,
       commit: guide.source.commit,

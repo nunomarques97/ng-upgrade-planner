@@ -1,5 +1,5 @@
-// Removed-API scan results in the plan: hop assignment, effort weights, scan status and the
-// confirmed/unverified split. Scan results are written here, so nothing reads the disk.
+// Removed-API and deprecation scan results in the plan: hop assignment, effort weights, scan status
+// and the confirmed/unverified split. Scan results are written here, so nothing reads the disk.
 import { describe, expect, it } from 'vitest';
 import { hopEffort, totalEffort } from '../../src/plan/effort.js';
 import {
@@ -10,8 +10,8 @@ import {
   type RemovedApiFinding,
   type UpgradePlan,
 } from '../../src/plan/index.js';
-import type { ScanFinding, ScanResult } from '../../src/scan/index.js';
-import { angularRecords, guide, memorySource, project } from './helpers.js';
+import type { DeprecationScanFinding, ScanFinding, ScanResult } from '../../src/scan/index.js';
+import { angularRecords, guide, memorySource, project, toolchain } from './helpers.js';
 
 const COVERAGE = { firstMajor: 9, lastMajor: 16, retrieved: '2026-10-02' };
 
@@ -33,8 +33,38 @@ function finding(entryId: string, major: number, fields: Partial<ScanFinding> = 
 }
 
 function scanResult(findings: ScanFinding[], fields: Partial<ScanResult> = {}): ScanResult {
-  return { findings, unscanned: [], filesScanned: 12, ...fields };
+  return { findings, deprecations: [], rxjs: [], unscanned: [], filesScanned: 12, ...fields };
 }
+
+function deprecation(entryId: string, removalMajor: number, fields: Partial<DeprecationScanFinding> = {}): DeprecationScanFinding {
+  return {
+    file: 'src/app/app.config.ts',
+    line: 5,
+    column: 3,
+    entryId,
+    package: '@angular/platform-browser/animations',
+    api: entryId,
+    deprecatedIn: removalMajor - 3,
+    removalMajor,
+    replacement: `instead of ${entryId}`,
+    confidence: 'confirmed',
+    ...fields,
+  };
+}
+
+const NO_DEPRECATIONS = { coverage: null, findings: 0, attached: 0, notAttached: { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 0 } };
+
+/** The RxJS part of a plan whose scan matched no RxJS data; the project has rxjs 7.8.1. */
+const NO_RXJS = {
+  coverage: null,
+  installed: '7.8.1',
+  status: 'off',
+  forcedBy: null,
+  uncheckedHops: [],
+  reason: 'the source was not scanned for RxJS 7 breaking changes',
+  findings: 0,
+  advisory: [],
+};
 
 async function plan(scan: PlanOptions['scan'] | undefined, options: PlanOptions = {}): Promise<UpgradePlan> {
   // Angular 14.2 to 17; the test data covers 9 to 16, so the hop to 17 is outside it.
@@ -70,6 +100,8 @@ describe('hop assignment', () => {
       attached: 3,
       notAttached: { atOrBelowCurrent: 2, aboveTarget: 2, noHop: 0 },
       unscanned: [],
+      deprecations: NO_DEPRECATIONS,
+      rxjs: NO_RXJS,
     });
   });
 
@@ -117,7 +149,10 @@ describe('hop assignment', () => {
       attached: 0,
       notAttached: { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 0 },
       unscanned: [],
+      deprecations: NO_DEPRECATIONS,
+      rxjs: NO_RXJS,
     });
+    expect(off.hops.every((hop) => hop.deprecations.length === 0)).toBe(true);
     expect((await plan(null)).scan.status).toBe('off');
     const empty = await plan({ result: scanResult([], { filesScanned: 0 }), coverage: COVERAGE });
     expect(empty.scan.status).toBe('no-source-files');
@@ -127,6 +162,105 @@ describe('hop assignment', () => {
       coverage: COVERAGE,
     });
     expect(unreadable.scan.status).toBe('ran');
+  });
+});
+
+describe('deprecation warnings', () => {
+  const DEPRECATION_COVERAGE = { removalMajors: [16, 17, 18, 19], retrieved: '2026-10-03' };
+
+  it('attaches a warning for a removal in N to the hop with to == N - 1 and counts the rest', async () => {
+    const result = await plan({
+      result: scanResult([], {
+        deprecations: [
+          deprecation('removed-by-14', 14),
+          deprecation('warn-in-14', 15),
+          deprecation('warn-in-15', 16),
+          deprecation('warn-in-16', 17),
+          deprecation('warn-in-17', 18),
+          deprecation('warn-in-18', 19),
+        ],
+      }),
+      coverage: COVERAGE,
+      deprecations: DEPRECATION_COVERAGE,
+    });
+    expect(result.hops.map((hop) => [hop.to, hop.deprecations.map((item) => item.entryId)])).toEqual([
+      [15, ['warn-in-15']],
+      [16, ['warn-in-16']],
+      [17, ['warn-in-17']],
+    ]);
+    expect(result.scan.deprecations).toEqual({
+      coverage: DEPRECATION_COVERAGE,
+      findings: 6,
+      attached: 3,
+      notAttached: { atOrBelowCurrent: 2, aboveTarget: 1, noHop: 0 },
+    });
+    // Removed-API counts are kept apart.
+    expect(result.scan.findings).toBe(0);
+    expect(result.hops.every((hop) => hop.removedApis.length === 0)).toBe(true);
+  });
+
+  it('copies every field and counts a warning hop without a stable release as not attached', async () => {
+    const records = angularRecords().map((record) =>
+      record.name === '@angular/core'
+        ? { ...record, versions: Object.fromEntries(Object.entries(record.versions).filter(([version]) => !version.startsWith('16.'))) }
+        : record,
+    );
+    const result = await buildPlan(
+      project('14.2.12'),
+      memorySource(records),
+      {
+        nodeVersion: '18.19.0',
+        targetMajor: 17,
+        scan: {
+          result: scanResult([], {
+            deprecations: [
+              deprecation('warn-in-15', 16, { confidence: 'heuristic', reason: 'template text match', file: 'src/a.component.html' }),
+              deprecation('warn-in-16', 17),
+            ],
+          }),
+          coverage: COVERAGE,
+        },
+      },
+      guide([]),
+    );
+    expect(result.hops.map((hop) => hop.to)).toEqual([15, 17]);
+    expect(result.hops[0]!.deprecations).toEqual([
+      {
+        file: 'src/a.component.html',
+        line: 5,
+        column: 3,
+        entryId: 'warn-in-15',
+        package: '@angular/platform-browser/animations',
+        api: 'warn-in-15',
+        deprecatedIn: 13,
+        removalMajor: 16,
+        replacement: 'instead of warn-in-15',
+        confidence: 'heuristic',
+        reason: 'template text match',
+      },
+    ]);
+    expect(result.scan.deprecations).toEqual({
+      coverage: null,
+      findings: 2,
+      attached: 1,
+      notAttached: { atOrBelowCurrent: 0, aboveTarget: 0, noHop: 1 },
+    });
+    // A heuristic warning is unverified, like a heuristic removed-API finding.
+    expect(result.unverified).toContainEqual({ hop: 15, subject: 'deprecated API warn-in-15 at src/a.component.html:5', reason: 'template text match' });
+  });
+
+  it('adds no effort points and no blockers', async () => {
+    const withWarnings = await plan({
+      result: scanResult([], { deprecations: [deprecation('a', 16), deprecation('b', 16, { line: 9 }), deprecation('c', 17)] }),
+      coverage: COVERAGE,
+    });
+    const without = await plan({ result: scanResult([]), coverage: COVERAGE });
+    expect(withWarnings.hops.map((hop) => hop.deprecations.length)).toEqual([2, 1, 0]);
+    expect(withWarnings.hops.map((hop) => hop.effort)).toEqual(without.hops.map((hop) => hop.effort));
+    expect(withWarnings.effort).toEqual(without.effort);
+    expect(withWarnings.hops.map((hop) => hop.libraries.filter((library) => library.status === 'blocker').length)).toEqual(
+      without.hops.map((hop) => hop.libraries.filter((library) => library.status === 'blocker').length),
+    );
   });
 });
 
@@ -148,12 +282,12 @@ describe('effort', () => {
       finding('manual', 15, { migration: 'no', line: 9 }),
       finding('maybe', 15, { migration: 'unknown', confidence: 'heuristic', reason: 'text match' }),
     ].map(toFinding);
-    const effort = hopEffort({ steps: [], libraries: [], requirements: [], removedApis });
+    const effort = hopEffort({ steps: [], libraries: [], requirements: [], toolchain: toolchain(), removedApis, rxjs: [] });
     expect(effort.counts.removedApis).toEqual({ migrated: 1, manual: 2 });
     expect(effort.breakdown.removedApis).toBe(REMOVED_API_POINTS.migrated + 2 * REMOVED_API_POINTS.manual);
     expect(effort.points).toBe(BASE_POINTS + effort.breakdown.removedApis);
 
-    const again = hopEffort({ steps: [], libraries: [], requirements: [], removedApis: removedApis.slice(3) });
+    const again = hopEffort({ steps: [], libraries: [], requirements: [], toolchain: toolchain(), removedApis: removedApis.slice(3), rxjs: [] });
     const total = totalEffort([{ effort }, { effort: again }]);
     expect(total.counts.removedApis).toEqual({ migrated: 1, manual: 4 });
     expect(total.breakdown.removedApis).toBe(effort.breakdown.removedApis + again.breakdown.removedApis);

@@ -1,0 +1,115 @@
+{
+  "description": "Open-source Angular apps used to measure the precision of the removed-API scan. Fetched by scripts/fetch-real-apps.mjs into .cache/real-apps (git-ignored) and scanned by scripts/scan-real-apps.mjs. No source of these apps is committed. angular is the @angular/core version installed by the app's lockfile at the pinned commit; path is the app folder inside the repository.",
+  "apps": [
+    {
+      "id": "angular2-hn",
+      "repository": "https://github.com/housseindjirdeh/angular2-hn",
+      "commit": "f6cc578d66c6fa7997f6ef46c7ed4488a85002d8",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/housseindjirdeh/angular2-hn/blob/f6cc578d66c6fa7997f6ef46c7ed4488a85002d8/LICENSE.md",
+      "path": ".",
+      "lockfile": "yarn",
+      "angular": "9.0.1"
+    },
+    {
+      "id": "angular-ngrx-material-starter",
+      "repository": "https://github.com/tomastrajan/angular-ngrx-material-starter",
+      "commit": "1729bb991a7a9d4d93c2f8b0d349471e18e430c7",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/tomastrajan/angular-ngrx-material-starter/blob/1729bb991a7a9d4d93c2f8b0d349471e18e430c7/LICENSE",
+      "path": ".",
+      "lockfile": "npm",
+      "angular": "10.2.3"
+    },
+    {
+      "id": "jira-clone-angular",
+      "repository": "https://github.com/trungvose/jira-clone-angular",
+      "commit": "e773fbe4b5d284791fe8ac7807add8641b45e65f",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/trungvose/jira-clone-angular/blob/e773fbe4b5d284791fe8ac7807add8641b45e65f/LICENSE",
+      "path": "frontend",
+      "lockfile": "npm",
+      "angular": "11.0.5"
+    },
+    {
+      "id": "ng-matero",
+      "repository": "https://github.com/ng-matero/ng-matero",
+      "commit": "93453d9ad54a921d6fcac0bdc8a2957b614c90fa",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/ng-matero/ng-matero/blob/93453d9ad54a921d6fcac0bdc8a2957b614c90fa/LICENSE",
+      "path": ".",
+      "lockfile": "npm",
+      "angular": "13.3.6"
+    },
+    {
+      "id": "ngx-admin",
+      "repository": "https://github.com/akveo/ngx-admin",
+      "commit": "dc6a442704bfef34b776b5eb15faf852d9e2f75c",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/akveo/ngx-admin/blob/dc6a442704bfef34b776b5eb15faf852d9e2f75c/LICENSE",
+      "path": ".",
+      "lockfile": "npm",
+      "angular": "15.2.10"
+    },
+    {
+      "id": "yunikorn-web",
+      "repository": "https://github.com/apache/yunikorn-web",
+      "commit": "21ebe5d9b1bbfc2e1eea8bbb8440d2a8bd38af4e",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/apache/yunikorn-web/blob/21ebe5d9b1bbfc2e1eea8bbb8440d2a8bd38af4e/LICENSE",
+      "path": ".",
+      "lockfile": "pnpm",
+      "angular": "16.2.10"
+    },
+    {
+      "id": "angular-tetris",
+      "repository": "https://github.com/trungvose/angular-tetris",
+      "commit": "179b593e0cbdfc4c7f1f542aabeebd413dc37d8a",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/trungvose/angular-tetris/blob/179b593e0cbdfc4c7f1f542aabeebd413dc37d8a/LICENSE",
+      "path": ".",
+      "lockfile": "yarn",
+      "angular": "16.0.3"
+    },
+    {
+      "id": "angular-spotify",
+      "repository": "https://github.com/trungvose/angular-spotify",
+      "commit": "bb21f83b12ae2ce866977efb5bf8da17e5572aee",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/trungvose/angular-spotify/blob/bb21f83b12ae2ce866977efb5bf8da17e5572aee/LICENSE",
+      "path": ".",
+      "lockfile": "yarn",
+      "angular": "17.3.2"
+    },
+    {
+      "id": "angular-hub",
+      "repository": "https://github.com/geromegrignon/angular-hub",
+      "commit": "a9224d939704f5115abd84a10fec7e7e8f96bb96",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/geromegrignon/angular-hub/blob/a9224d939704f5115abd84a10fec7e7e8f96bb96/LICENSE",
+      "path": ".",
+      "lockfile": "yarn",
+      "angular": "18.2.0"
+    },
+    {
+      "id": "spartan",
+      "repository": "https://github.com/spartan-ng/spartan",
+      "commit": "10f0c46596798c0ec09dca40426c7e987eef113d",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/spartan-ng/spartan/blob/10f0c46596798c0ec09dca40426c7e987eef113d/LICENSE",
+      "path": ".",
+      "lockfile": "pnpm",
+      "angular": "19.2.8"
+    },
+    {
+      "id": "coreui-free-angular-admin-template",
+      "repository": "https://github.com/coreui/coreui-free-angular-admin-template",
+      "commit": "d5af5acca9ba67074be9471d08a94c9915536cac",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/coreui/coreui-free-angular-admin-template/blob/d5af5acca9ba67074be9471d08a94c9915536cac/LICENSE",
+      "path": ".",
+      "lockfile": "npm",
+      "angular": "19.2.14"
+    }
+  ]
+}

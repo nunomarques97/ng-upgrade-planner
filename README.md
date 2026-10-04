@@ -6,8 +6,13 @@ installed major version to the target (for example 14 to 22). For each hop it li
 - the official update steps from the Angular update guide;
 - the newest compatible version of every library in the project that declares `@angular/*` peer dependencies;
 - blockers: libraries with no release that accepts the hop's Angular version;
-- the framework requirements (TypeScript, RxJS, zone.js, Node.js) and whether the installed versions meet them;
-- the places in your own source that use Angular APIs removed or changed in that hop, with the replacement;
+- the Node.js and TypeScript ranges of the hop, with a blocker when the project's `engines.node` or its locked
+  TypeScript falls outside them (your local Node.js version is shown for context only);
+- the RxJS and zone.js requirements and whether the installed versions meet them;
+- the places in your own source that use Angular, Angular Material or CDK APIs removed or changed in that hop,
+  with the replacement;
+- warnings for APIs you use that are deprecated with an announced removal, one hop before the removal;
+- the RxJS 6 to 7 breaking changes found in your source, when you are still on RxJS 6;
 - an effort estimate.
 
 It can also print the plan as JSON, and it ships an Agent Skill that lets a coding agent carry out the plan one
@@ -25,7 +30,7 @@ cd my-angular-app
 npx ng-upgrade-planner
 ```
 
-The package is not published to npm yet. Until it is, run it from a clone of this repository:
+To run the latest development version instead, use a clone of this repository:
 
 ```sh
 npm ci
@@ -34,8 +39,8 @@ node dist/cli.js --cwd path/to/my-angular-app
 ```
 
 The tool reads `package.json` and the lockfile (`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml` or
-`yarn.lock`, both yarn classic and yarn berry), and scans the project source for removed Angular APIs. It prints
-a summary in the terminal and writes three reports to the project folder:
+`yarn.lock`, both yarn classic and yarn berry), and scans the project source for removed and deprecated APIs. It
+prints a summary in the terminal and writes three reports to the project folder:
 
 - `ng-upgrade-plan.md`: the full plan in Markdown;
 - `ng-upgrade-plan.html`: the same plan as a single HTML file with no external resources;
@@ -82,7 +87,9 @@ Angular upgrade plan for jira-clone-angular-frontend
 Current: Angular 11.0.5
 Target:  Angular 22 (22.2.1)
 Source scan: no source files found
-Total effort: XL (556 points) over 11 hops, 10 blockers
+Node.js: engines.node none; local 20.19.0 (context only)
+Warning: package.json has no engines.node, so the Node.js versions the project runs on are not known and the Node.js requirement of each hop cannot be checked.
+Total effort: XL (552 points) over 11 hops, 21 blockers
 
 Hop 1: Angular 11 to 12 (12.2.17), effort M (36 points)
   Steps: 17 (4 basic, 4 medium, 9 advanced)
@@ -91,10 +98,13 @@ Hop 1: Angular 11 to 12 (12.2.17), effort M (36 points)
     codelyzer 6.0.1 to 6.0.2, patch
     ng-zorro-antd 11.0.0 to 12.1.1, major
     ngx-quill 13.0.1 to 15.0.0, major
-  Blockers: 0
+  Blockers: 1
+    TypeScript: typescript 4.0.3 from the lockfile is outside ">=4.2.3 <4.4": after ng update, install a TypeScript inside that range if ng update did not move it there
   Could not decide: @angular-builders/custom-webpack, @ngneat/content-loader
+  Toolchain:
+    Node.js ^12.14.1 || >=14.0.0, no engines.node: unverified; package.json has no engines.node, so the Node.js range "^12.14.1 || >=14.0.0" of Angular 12 was not checked
+    TypeScript >=4.2.3 <4.4, typescript 4.0.3: blocker
   Framework requirements:
-    typescript must satisfy ">=4.2.3 <4.4" (@angular/compiler-cli@12.2.17 peerDependencies); 4.0.3 is installed
     zone.js must satisfy "~0.11.4" (@angular/core@12.2.17 peerDependencies); 0.10.3 is installed
   Removed APIs: Not checked: no source files were found.
 
@@ -104,8 +114,9 @@ Hop 2: Angular 12 to 13 (13.4.0), effort M (39 points)
     @angular/cdk 11.0.3 to 13.3.9, major
     @ngneat/content-loader 6.0.0 to 7.0.0, major
     ng-zorro-antd 12.1.1 to 13.4.0, major
-  Blockers: 1
+  Blockers: 2
     codelyzer: No release accepts Angular 13; the newest, 6.0.2, requires @angular/compiler ">=2.3.1 <13.0.0 || ^12.0.0-next || ^12.1.0-next || ^12.2.0-next", @angular/core ">=2.3.1 <13.0.0 || ^12.0.0-next || ^12.1.0-next || ^12.2.0-next".
+    TypeScript: typescript 4.0.3 from the lockfile is outside ">=4.4.2 <4.7": after ng update, install a TypeScript inside that range if ng update did not move it there
   Could not decide: @angular-builders/custom-webpack
   ...
 ```
@@ -119,17 +130,19 @@ An excerpt of the Markdown report for the same plan (`...` marks skipped parts):
 | Current Angular | 11.0.5 |
 | Target Angular | 22 (22.2.1) |
 | Hops | 11 |
-| Total effort | XL (556 points) |
+| Total effort | XL (552 points) |
 | Lockfile | `package-lock.json` (npm) |
 | Source scan | no source files found |
+| engines.node | none |
+| Local Node.js | 20.19.0 (context only) |
 
 ## Summary
 
-| Hop | Steps | Library updates | Blockers | Unknown | Requirement warnings | Removed APIs | Effort |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1. Angular 11 to 12 | 17 | 4 | 0 | 2 | 2 | 0 | M (36 points) |
-| 2. Angular 12 to 13 | 13 | 3 | 1 | 1 | 2 | 0 | M (39 points) |
-| 3. Angular 13 to 14 | 17 | 3 | 1 | 0 | 2 | 0 | L (43 points) |
+| Hop | Steps | Library updates | Blockers | Unknown | Requirement warnings | Removed APIs | Deprecation warnings | Effort |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1. Angular 11 to 12 | 17 | 4 | 1 | 2 | 1 | 0 | 0 | M (36 points) |
+| 2. Angular 12 to 13 | 13 | 3 | 2 | 1 | 1 | 0 | 0 | M (39 points) |
+| 3. Angular 13 to 14 | 17 | 3 | 2 | 0 | 1 | 0 | 0 | L (43 points) |
 ...
 
 ## Hop 1: Angular 11 to 12
@@ -151,11 +164,17 @@ Target release: 12.2.17. Effort: **M (36 points)**.
 - `@angular-builders/custom-webpack`: No release with @angular peers accepts Angular 12, but 46 releases older than 14.0.0 declare no @angular peer dependency and may support it; 14.0.0 requires @angular/compiler-cli "^14.0.0".
 ...
 
+### Toolchain
+
+| Tool | Required range | Project | Status | Why |
+| --- | --- | --- | --- | --- |
+| TypeScript | `>=4.2.3 <4.4`<br>from @angular/compiler-cli@12.2.17 peerDependencies | 4.0.3<br>typescript from the lockfile | **blocker** | typescript 4.0.3 from the lockfile is outside "\>=4.2.3 \<4.4": after ng update, install a TypeScript inside that range if ng update did not move it there |
+...
+
 ### Framework requirements
 
 | Requirement | Required range | Installed | Status | Source |
 | --- | --- | --- | --- | --- |
-| typescript | `>=4.2.3 <4.4` | 4.0.3 | not met (action needed) | @angular/compiler-cli@12.2.17 peerDependencies |
 | rxjs | `^6.5.3 \|\| ^7.0.0` | 6.6.3 | met | @angular/core@12.2.17 peerDependencies |
 | zone.js | `~0.11.4` | 0.10.3 | not met (action needed) | @angular/core@12.2.17 peerDependencies |
 ...
@@ -169,7 +188,7 @@ Target release: 12.2.17. Effort: **M (36 points)**.
 
 ### Could not be verified
 
-These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges, anything the registry data could not decide, removed-API findings from text matching and source the scan could not check. Check them by hand before relying on them.
+These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges, anything the registry data could not decide, removed-API and deprecation findings from text matching and source the scan could not check. Check them by hand before relying on them.
 ````
 <!-- example:end -->
 
@@ -214,16 +233,35 @@ It skips `node_modules`, `dist`, `out-tsc`, `.angular`, `coverage`, `.git`, the 
 `angular.json` and everything your `.gitignore` files exclude. Symbolic links are not followed, and files over
 1 MB are not read.
 
-The findings come from a bundled list of 105 changes in Angular 9 to 22. Each entry cites the official Angular
-document that states the change (the Angular or Angular CLI CHANGELOG, the Angular CLI release notes for 9 to 11,
-or the angular.dev update guide data) and records the replacement and whether the official `ng update` migration
-for that major fixes it. 36 of them are `angular.json` builder options and builders removed by the Angular CLI,
-such as `extractCss` (13) or `browserTarget` (19); an option counts only in a target whose `builder` is the
-affected one, in its `options` and in every entry of its `configurations`. Under the known wrappers
-`@angular-builders/custom-webpack` and `ngx-build-plus` the same options are reported as heuristic findings. Each finding is
-attached to the hop where it must be fixed and shows `file:line`, the API, the replacement and "fixed by ng
-update migration: yes, no or unknown". Findings for majors you are already past, or beyond the target, are
-counted but not listed.
+The findings come from bundled data. Every entry cites the official document that states the change and records
+the replacement and whether the official `ng update` migration for that major fixes it:
+
+- **Angular framework and CLI** (104 entries, Angular 9 to 22): from the Angular or Angular CLI CHANGELOG, the
+  Angular CLI release notes for 9 to 11, or the angular.dev update guide data. 36 of them are `angular.json`
+  builder options and builders removed by the Angular CLI, such as `extractCss` (13) or `browserTarget` (19); an
+  option counts only in a target whose `builder` is the affected one, in its `options` and in every entry of its
+  `configurations`. Under the known wrappers `@angular-builders/custom-webpack` and `ngx-build-plus` the same
+  options are reported as heuristic findings.
+- **Angular Material and CDK** (185 entries, 9 to 22): exports and entry points removed from `@angular/material`
+  and `@angular/cdk`, such as the `legacy-*` entry points (17) and `MatCommonModule` (21), from the
+  angular/components CHANGELOG.
+- **Deprecations with an announced removal** (11 entries): for example the `@angular/animations` package and
+  `provideAnimationsAsync()`, deprecated in 20.2 for removal in 23. They come from the `@deprecated` notices in
+  the Angular sources that name the removal major.
+- **RxJS 6 to 7** (4 entries): the `rxjs/Rx` import, `VirtualTimeScheduler.sortActions`, `defaultIfEmpty()`
+  without a value and `iif()` without both results, from the RxJS breaking-changes document.
+
+The 105 entries of 0.2.0 were checked again against their sources before this release; the entries added in
+0.3.0 were written from their sources (audit status `added`) and not read again separately. The result per entry
+is in [docs/verification/data-audit.md](docs/verification/data-audit.md).
+
+Each removed-API finding is attached to the hop where it must be fixed and shows `file:line`, the API, the
+replacement and "fixed by ng update migration: yes, no or unknown". Findings for majors you are already past, or
+beyond the target, are counted but not listed. A deprecation is shown as a warning in the hop before its removal
+(the hop to 22 for a removal in 23); it does not block and adds no effort, because the hop works without the
+change. RxJS findings are shown only while the installed rxjs is 6.x: as work in the first hop whose
+`@angular/core` no longer accepts RxJS 6, or else once as a non-blocking advisory. No Angular release up to 22
+requires RxJS 7, so today they are an advisory.
 
 Findings are of two kinds:
 
@@ -239,6 +277,46 @@ codebase does not swamp the estimate.
 
 Use `--no-scan` to plan from the dependencies alone. The reports then say that the source was not checked.
 
+## Node.js and TypeScript
+
+Each hop states the Node.js range of its Angular release (from the `engines` of `@angular/core` and
+`@angular/cli`) and its TypeScript range (from the `@angular/compiler-cli` peer dependency):
+
+- **Node.js** is checked against the `engines.node` field of your `package.json`, because that is what your
+  project, CI and deployments promise. It is a blocker when no version it allows is in the hop's range, a
+  warning when it also allows versions outside it, and unverified when it is missing. Your local Node.js version
+  is shown for context and decides nothing.
+- **TypeScript** is checked against the version in your lockfile. Outside the hop's range it is a blocker: after
+  `ng update`, install a TypeScript inside the range if `ng update` did not move it there. Later hops compare
+  with the TypeScript locked today, so plan again after each hop.
+
+## Scan precision on real apps
+
+The scan was run on real open-source Angular apps at pinned commits, and every finding was labelled true or
+false positive by reading the code at its line. Precision is true positives divided by all findings:
+
+<!-- precision:start -->
+Measured with ng-upgrade-planner 0.3.0 on 11 open-source Angular apps (Angular 9 to 19) on 2026-10-04: 105
+findings, 105 true positives, 0 false positives, precision 100.0%.
+
+| Rule family | Findings | True positives | False positives | Precision |
+| --- | ---: | ---: | ---: | ---: |
+| TypeScript symbol | 17 | 17 | 0 | 100.0% |
+| Template pattern | 0 | 0 | 0 | n/a |
+| Config path | 11 | 11 | 0 | 100.0% |
+| Builder option | 25 | 25 | 0 | 100.0% |
+| Builder | 8 | 8 | 0 | 100.0% |
+| Material and CDK | 0 | 0 | 0 | n/a |
+| Deprecation warning | 44 | 44 | 0 | 100.0% |
+| RxJS 7 change | 0 | 0 | 0 | n/a |
+| All | 105 | 105 | 0 | 100.0% |
+<!-- precision:end -->
+
+"n/a" means the family had no finding on these apps, so its precision on real code is not known yet. Recall
+is not measured: uses the scan missed are not counted. The labels have not been reviewed independently yet. The
+apps, the labels with their reasons and the numbers per app are in
+[docs/verification/scan-precision.md](docs/verification/scan-precision.md).
+
 ## JSON output
 
 `--json` prints the plan as a single JSON document on stdout instead of the terminal summary. Unless
@@ -248,10 +326,11 @@ Use `--no-scan` to plan from the dependencies alone. The reports then say that t
 npx ng-upgrade-planner --json --no-report > plan.json
 ```
 
-The document has a `schemaVersion` (currently `1`). For each hop it holds the official steps and `ng update`
-commands, the library target versions, blockers, removed-API findings, the effort and the confirmed and
-unverified results. A field is renamed, removed or changes meaning only together with a new schema version.
-Every field is described in the schema reference,
+The document has a `schemaVersion` (currently `2`). For each hop it holds the official steps and `ng update`
+commands, the library target versions, blockers, the Node.js and TypeScript checks, removed-API findings,
+deprecation warnings, RxJS 7 changes, the effort and the confirmed and unverified results. A field is renamed,
+removed or changes meaning only together with a new schema version. Version 2 came with 0.3.0; 0.2.0 wrote
+version 1. Every field, and what changed from version 1, is described in the schema reference,
 [skills/angular-upgrade-hops/references/plan-json.md](skills/angular-upgrade-hops/references/plan-json.md).
 
 ## Agent Skill
@@ -278,8 +357,8 @@ skills. The folder is `skills/angular-upgrade-hops` in a clone of this repositor
   the folder name: it must match the `name` field in `SKILL.md`. The folder holds only Markdown, so nothing
   runs until the agent follows the instructions.
 
-The skill runs `npx ng-upgrade-planner`, which needs the npm package. Until it is published, the agent cannot
-download it that way.
+The skill runs `npx ng-upgrade-planner` and reads JSON schema version 2, so it needs ng-upgrade-planner 0.3.0
+or later; it stops on the version 1 output of 0.2.0.
 
 ## Limitations
 
@@ -292,16 +371,17 @@ download it that way.
   earlier as optional.
 - **Update steps cover Angular up to 22**, from a bundled copy of the update guide data. Later hops say that no
   steps are available instead of guessing.
-- **Effort is an estimate**: a weighted count of steps, major library updates, unmet requirements, blockers and
-  removed APIs. It has not been calibrated against real upgrades.
+- **Effort is an estimate**: a weighted count of steps, major library updates, unmet requirements, blockers,
+  Node.js and TypeScript problems and removed APIs. It has not been calibrated against real upgrades.
 - **Only the root `package.json` is read.** Workspaces and monorepo packages are not traversed. The scan does
   read every source file under the project folder.
 - **Nothing is installed or built.** The plan is based on registry metadata and your source text; it does not
   run your build or your tests.
-- **The removed-API scan finds only what its data lists.** The data covers Angular 9 to 22 and only changes a
-  source scan can see: a removed or renamed export, a decorator or method option, a template pattern or a
-  configuration property. Behaviour and timing changes, typing changes the compiler reports, methods called on
-  injected instances and packages outside `@angular/*` (such as zone.js) are not covered. Of the Angular CLI
+- **The scan finds only what its data lists.** The data covers Angular, Angular Material and the CDK 9 to 22
+  and RxJS 6 to 7, and only changes a source scan can see: a removed or renamed export, a decorator or method
+  option, a template pattern or a configuration property. Behaviour and timing changes, typing changes the
+  compiler reports, methods called on injected instances, Sass and CSS changes and other packages (such as
+  zone.js) are not covered. Of the Angular CLI
   changes, only `angular.json` options and builders are: command-line flags, environment variables and
   options that only third-party builders define are not.
 - **The scan has no type information.** A local variable that shadows an imported name is still matched. An

@@ -1,13 +1,20 @@
 // Markdown report. Every plan string is escaped with escapeMarkdown or markdownCode; step text
 // keeps its code spans and https links only.
-import type { Fact, Hop, LibraryHopResult, RemovedApiFinding, UpgradePlan } from '../plan/types.js';
+import type { DeprecationFinding, Fact, Hop, LibraryHopResult, RemovedApiFinding, RxjsFinding, ToolchainCheck, UpgradePlan } from '../plan/types.js';
 import {
+  DEPRECATION_HELP,
+  TOOLCHAIN_HELP,
+  TOOLCHAIN_LABELS,
+  blockerCount,
   LEVELS,
   LEVEL_TITLES,
   REMOVED_API_HELP,
+  RXJS_HELP,
   STATUS_HELP,
   UNVERIFIED_INTRO,
   confirmedStatements,
+  deprecationCountText,
+  enginesText,
   effortBreakdown,
   effortText,
   factValue,
@@ -15,14 +22,22 @@ import {
   hopTitle,
   hopView,
   libraryStatusText,
+  localNodeText,
   peerCheckText,
   peerEvidence,
   removedApiCountText,
   removedApiEmptyText,
   requirementStatusText,
+  requirementWarningCount,
+  rxjsAdvisory,
+  rxjsAdvisoryText,
+  rxjsCountText,
+  rxjsRequiredText,
   scanNotes,
   scanStatusText,
   stepCountText,
+  toolchainProjectLabel,
+  toolchainStatusText,
   unverifiedGroups,
 } from './model.js';
 import { cleanText, escapeMarkdown as md, markdownCode, markdownUrl, safeHttpsUrl, stepMarkdown } from './text.js';
@@ -88,6 +103,92 @@ function removedApiSection(plan: UpgradePlan, hop: Hop): string[] {
   return out;
 }
 
+function deprecationRow(finding: DeprecationFinding): string[] {
+  const confidence = finding.confidence === 'heuristic' ? `heuristic (unverified): ${md(finding.reason ?? '')}` : 'confirmed';
+  return [
+    markdownCode(findingLocation(finding), true),
+    `${markdownCode(finding.api, true)} from ${markdownCode(finding.package, true)}`,
+    String(finding.deprecatedIn),
+    String(finding.removalMajor),
+    md(finding.replacement),
+    confidence,
+  ];
+}
+
+/** Listed only when the hop has deprecation warnings; they are not blockers. */
+function deprecationSection(hop: Hop): string[] {
+  if (hop.deprecations.length === 0) return [];
+  return [
+    '### Deprecation warnings',
+    '',
+    `${md(deprecationCountText(hop))}. ${md(DEPRECATION_HELP)}`,
+    '',
+    ...table(
+      ['Location', 'API', 'Deprecated in', 'Removal announced for', 'Replacement', 'Confidence'],
+      hop.deprecations.map(deprecationRow),
+    ),
+    '',
+  ];
+}
+
+function rxjsTable(findings: readonly RxjsFinding[]): string[] {
+  const rows = findings.map((finding) => [
+    markdownCode(findingLocation(finding), true),
+    `${markdownCode(finding.api, true)} from ${markdownCode(finding.package, true)}`,
+    md(finding.change),
+    md(finding.replacement),
+  ]);
+  return [...table(['Location', 'API', 'Change', 'Replacement'], rows), ''];
+}
+
+/** Listed only in the hop that forces RxJS 7, where the findings are required work. */
+function rxjsSection(plan: UpgradePlan, hop: Hop): string[] {
+  if (hop.rxjs.length === 0) return [];
+  return [
+    '### RxJS 7 breaking changes',
+    '',
+    `${md(rxjsCountText(hop.rxjs))}. ${md(rxjsRequiredText(plan, hop))} ${md(RXJS_HELP)}`,
+    '',
+    ...rxjsTable(hop.rxjs),
+  ];
+}
+
+/** Listed once, before the hops, when no hop of the plan forces RxJS 7. */
+function rxjsAdvisorySection(plan: UpgradePlan): string[] {
+  const advisory = rxjsAdvisory(plan);
+  if (advisory.length === 0) return [];
+  return [
+    '## RxJS 7 advisory',
+    '',
+    `${md(rxjsCountText(advisory))}. ${md(rxjsAdvisoryText(plan))} ${md(RXJS_HELP)}`,
+    '',
+    ...rxjsTable(advisory),
+  ];
+}
+
+function toolchainRow(check: ToolchainCheck): string[] {
+  const range =
+    check.range.value === null
+      ? factCell(check.range)
+      : `${markdownCode(check.range.value, true)}${check.range.confidence === 'unverified' ? ' (unverified)' : ''}`;
+  const source = check.requiredBy.length > 0 ? `<br>from ${check.requiredBy.map(md).join(', ')}` : '';
+  const project = `${factCell(check.project, 'none')}<br>${md(toolchainProjectLabel(check))}`;
+  const status = check.status === 'blocker' ? '**blocker**' : md(toolchainStatusText(check));
+  return [md(TOOLCHAIN_LABELS[check.name]), `${range}${source}`, project, status, md(check.reason)];
+}
+
+function toolchainSection(plan: UpgradePlan, hop: Hop): string[] {
+  const view = hopView(hop);
+  return [
+    '### Toolchain',
+    '',
+    ...table(['Tool', 'Required range', 'Project', 'Status', 'Why'], view.toolchain.map(toolchainRow)),
+    '',
+    `Local Node.js: ${md(localNodeText(plan))}. ${md(TOOLCHAIN_HELP)}`,
+    '',
+  ];
+}
+
 function hopSection(plan: UpgradePlan, hop: Hop, index: number): string[] {
   const view = hopView(hop);
   const out: string[] = [`## Hop ${index + 1}: ${md(hopTitle(hop))}`, ''];
@@ -118,13 +219,21 @@ function hopSection(plan: UpgradePlan, hop: Hop, index: number): string[] {
   }
 
   out.push('### Blockers', '');
-  if (view.blockers.length === 0) out.push('None.', '');
-  else out.push(...view.blockers.map((library) => `- ${markdownCode(library.name)}: ${md(library.reason)}`), '');
+  if (blockerCount(view) === 0) out.push('None.', '');
+  else {
+    out.push(
+      ...view.blockers.map((library) => `- ${markdownCode(library.name)}: ${md(library.reason)}`),
+      ...view.toolchainBlockers.map((check) => `- ${md(TOOLCHAIN_LABELS[check.name])} (toolchain): ${md(check.reason)}`),
+      '',
+    );
+  }
 
   if (view.unknown.length > 0) {
     out.push('### Could not be decided', '');
     out.push(...view.unknown.map((library) => `- ${markdownCode(library.name)}: ${md(library.reason)}`), '');
   }
+
+  out.push(...toolchainSection(plan, hop));
 
   out.push('### Framework requirements', '');
   if (hop.requirements.length === 0) {
@@ -141,6 +250,8 @@ function hopSection(plan: UpgradePlan, hop: Hop, index: number): string[] {
   }
 
   out.push(...removedApiSection(plan, hop));
+  out.push(...deprecationSection(hop));
+  out.push(...rxjsSection(plan, hop));
 
   out.push('### Effort', '');
   out.push(`${md(effortText(hop.effort))}: ${md(effortBreakdown(hop.effort))}.`, '');
@@ -164,6 +275,8 @@ export function renderMarkdown(plan: UpgradePlan, meta: ReportMeta): string {
         ['Total effort', plan.hops.length > 0 ? md(effortText(plan.effort)) : 'none'],
         ['Lockfile', lockfile !== null ? `${markdownCode(lockfile.file, true)} (${md(lockfile.kind)})` : 'none'],
         ['Source scan', md(scanStatusText(plan))],
+        ['engines.node', md(enginesText(plan))],
+        ['Local Node.js', md(localNodeText(plan))],
       ],
     ),
     '',
@@ -183,19 +296,24 @@ export function renderMarkdown(plan: UpgradePlan, meta: ReportMeta): string {
         `${index + 1}. ${md(hopTitle(hop))}`,
         String(hop.steps.length),
         String(view.updates.length),
-        String(view.blockers.length),
+        String(blockerCount(view)),
         String(view.unknown.length),
-        String(view.warnings.length),
+        String(requirementWarningCount(view)),
         String(hop.removedApis.length),
+        String(hop.deprecations.length),
         md(effortText(hop.effort)),
       ];
     });
     out.push(
-      ...table(['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Effort'], rows),
+      ...table(
+        ['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Deprecation warnings', 'Effort'],
+        rows,
+      ),
       '',
     );
     out.push(md(STATUS_HELP), '');
     out.push([...scanNotes(plan), ...(plan.scan.status === 'ran' ? [REMOVED_API_HELP] : [])].map(md).join(' '), '');
+    out.push(...rxjsAdvisorySection(plan));
     plan.hops.forEach((hop, index) => out.push(...hopSection(plan, hop, index)));
   }
 

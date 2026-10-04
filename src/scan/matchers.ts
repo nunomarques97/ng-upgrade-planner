@@ -1,26 +1,31 @@
-// The removed-API dataset indexed for the scanners.
+// The removed-API, deprecated-API and RxJS datasets indexed for the scanners. All kinds of entry
+// match by the same rules; the scan sorts the matches into removed-API, deprecation and RxJS findings.
 import type {
-  RemovedApiData,
-  RemovedApiEntry,
+  DeprecatedSymbolEntry,
+  DeprecatedTemplateEntry,
   RemovedConfigEntry,
   RemovedSymbolEntry,
   RemovedTemplateEntry,
+  RxjsSymbolEntry,
+  ScanDataEntry,
 } from '../data/types.js';
 
+type SymbolEntry = RemovedSymbolEntry | DeprecatedSymbolEntry | RxjsSymbolEntry;
+
 export interface TemplateMatcher {
-  entry: RemovedTemplateEntry;
+  entry: RemovedTemplateEntry | DeprecatedTemplateEntry;
   pattern: RegExp;
 }
 
 /** A dataset entry found at an offset of a file's text. */
 export interface RawMatch {
-  entry: RemovedApiEntry;
+  entry: ScanDataEntry;
   offset: number;
   /** Present when the match was made by text rather than structure. */
   heuristic?: string;
 }
 
-type SymbolIndex = ReadonlyMap<string, readonly RemovedSymbolEntry[]>;
+type SymbolIndex = ReadonlyMap<string, readonly SymbolEntry[]>;
 
 export interface Matchers {
   /** Any import of the entry point (symbol '*'), by package. */
@@ -35,37 +40,40 @@ export interface Matchers {
   memberCallKey: SymbolIndex;
   /** A type reference without type arguments. */
   bareType: SymbolIndex;
+  /** A call of the symbol with fewer arguments than the entry's minArguments. */
+  fewerArguments: SymbolIndex;
   templates: readonly TemplateMatcher[];
   configs: readonly RemovedConfigEntry[];
 }
 
-const NONE: readonly RemovedSymbolEntry[] = [];
+const NONE: readonly SymbolEntry[] = [];
 
 export function symbolKey(packageName: string, symbol: string): string {
   return `${packageName} ${symbol}`;
 }
 
-export function lookup(index: SymbolIndex, key: string): readonly RemovedSymbolEntry[] {
+export function lookup(index: SymbolIndex, key: string): readonly SymbolEntry[] {
   return index.get(key) ?? NONE;
 }
 
-function add(index: Map<string, RemovedSymbolEntry[]>, key: string, entry: RemovedSymbolEntry): void {
+function add(index: Map<string, SymbolEntry[]>, key: string, entry: SymbolEntry): void {
   const list = index.get(key);
   if (list) list.push(entry);
   else index.set(key, [entry]);
 }
 
-export function buildMatchers(data: RemovedApiData): Matchers {
-  const wholePackage = new Map<string, RemovedSymbolEntry[]>();
-  const plain = new Map<string, RemovedSymbolEntry[]>();
-  const member = new Map<string, RemovedSymbolEntry[]>();
-  const callKey = new Map<string, RemovedSymbolEntry[]>();
-  const memberCallKey = new Map<string, RemovedSymbolEntry[]>();
-  const bareType = new Map<string, RemovedSymbolEntry[]>();
+export function buildMatchers(entries: readonly ScanDataEntry[]): Matchers {
+  const wholePackage = new Map<string, SymbolEntry[]>();
+  const plain = new Map<string, SymbolEntry[]>();
+  const member = new Map<string, SymbolEntry[]>();
+  const callKey = new Map<string, SymbolEntry[]>();
+  const memberCallKey = new Map<string, SymbolEntry[]>();
+  const bareType = new Map<string, SymbolEntry[]>();
+  const fewerArguments = new Map<string, SymbolEntry[]>();
   const templates: TemplateMatcher[] = [];
   const configs: RemovedConfigEntry[] = [];
 
-  for (const entry of data.entries) {
+  for (const entry of entries) {
     if (entry.kind === 'template') {
       templates.push({ entry, pattern: new RegExp(entry.pattern, 'g') });
     } else if (entry.kind === 'config') {
@@ -74,12 +82,13 @@ export function buildMatchers(data: RemovedApiData): Matchers {
       add(wholePackage, entry.package, entry);
     } else {
       const key = symbolKey(entry.package, entry.symbol);
-      if (entry.withoutTypeArguments) add(bareType, key, entry);
-      else if (entry.member !== undefined && entry.key !== undefined) add(memberCallKey, key, entry);
+      if ('minArguments' in entry && entry.minArguments !== undefined) add(fewerArguments, key, entry);
+      else if ('withoutTypeArguments' in entry && entry.withoutTypeArguments) add(bareType, key, entry);
+      else if (entry.member !== undefined && 'key' in entry && entry.key !== undefined) add(memberCallKey, key, entry);
       else if (entry.member !== undefined) add(member, key, entry);
-      else if (entry.key !== undefined) add(callKey, key, entry);
+      else if ('key' in entry && entry.key !== undefined) add(callKey, key, entry);
       else add(plain, key, entry);
     }
   }
-  return { wholePackage, plain, member, callKey, memberCallKey, bareType, templates, configs };
+  return { wholePackage, plain, member, callKey, memberCallKey, bareType, fewerArguments, templates, configs };
 }

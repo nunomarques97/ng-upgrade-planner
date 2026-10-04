@@ -18,6 +18,8 @@ export const SYNTHETIC_PROJECT = fileURLToPath(new URL('../fixtures/synthetic/sc
 
 const SOURCE = { url: 'https://angular.dev/reference/releases', title: 'Synthetic test entry' };
 
+const AUDIT = { status: 'added', read: '2026-10-03', note: 'Synthetic test entry.' } as const;
+
 type Base = Pick<RemovedApiEntry, 'id' | 'package' | 'major'> & Partial<Pick<RemovedApiEntry, 'migration'>>;
 
 function base(fields: Base): Omit<RemovedSymbolEntry, 'kind' | 'symbol'> {
@@ -28,6 +30,7 @@ function base(fields: Base): Omit<RemovedSymbolEntry, 'kind' | 'symbol'> {
     replacement: `instead of ${fields.id}`,
     migration: 'unknown',
     source: SOURCE,
+    audit: AUDIT,
     ...fields,
   };
 }

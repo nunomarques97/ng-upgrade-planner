@@ -4,8 +4,33 @@
 // typing changes, instance members and packages outside @angular/* are listed in
 // REMOVED_API_EXCLUDED with the reason. angular.json builder options and builder names removed
 // by the Angular CLI are entries too; they name the builder package (@angular-devkit/build-angular,
-// @angular/build or @angular-devkit/build-ng-packagr). Text is plain ASCII.
-import type { RemovedApiData, RemovedApiExclusion, RemovedApiSource } from './types.js';
+// @angular/build or @angular-devkit/build-ng-packagr). Angular Material and CDK entries come from
+// src/data/components-apis.ts. Text is plain ASCII.
+import { COMPONENTS_EXCLUDED, COMPONENTS_REMOVED_APIS } from './components-apis.js';
+import type { RemovedApiAudit, RemovedApiData, RemovedApiExclusion, RemovedApiSource } from './types.js';
+
+/** Date the audited entries were re-read against their sources (docs/verification/data-audit.md). */
+const AUDITED = '2026-10-03';
+
+/** The sources state what the entry says; the note adds context the entry does not hold. */
+function confirmed(note?: string): RemovedApiAudit {
+  return note === undefined ? { status: 'confirmed', read: AUDITED } : { status: 'confirmed', read: AUDITED, note };
+}
+
+/** A source contradicted the entry; the note states what was changed. */
+function corrected(note: string): RemovedApiAudit {
+  return { status: 'corrected', read: AUDITED, note };
+}
+
+/** The sources contradicted the entry as a whole; it moved to REMOVED_API_EXCLUDED with this reason. */
+function removed(note: string): RemovedApiAudit {
+  return { status: 'removed', read: AUDITED, note };
+}
+
+/** Written from its source after the audit, or by the audit in place of a removed entry. */
+function added(note: string): RemovedApiAudit {
+  return { status: 'added', read: AUDITED, note };
+}
 
 const ANGULAR_COMMIT = 'c0dc8c4bbeea70879aef54e9fcc7888359dfd1a5';
 const CLI_COMMIT = 'f61de6620271d71bb7fc051d0ea03426bfa2af5b';
@@ -114,6 +139,15 @@ function hammerExports(major: number): RemovedApiSource {
   };
 }
 
+/** The NgComponentOutlet directive of @angular/common at a release tag. */
+function ngComponentOutlet(major: number): RemovedApiSource {
+  const tag = major >= 22 ? `v${major}.0.0` : `${major}.0.0`;
+  return {
+    url: `https://github.com/angular/angular/blob/${tag}/packages/common/src/directives/ng_component_outlet.ts`,
+    title: `@angular/common ${major}.0.0 NgComponentOutlet`,
+  };
+}
+
 export const REMOVED_APIS: RemovedApiData = {
   retrieved: '2026-10-02',
   firstMajor: 9,
@@ -134,6 +168,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(9),
       migrationNote: 'migration-v9-renderer-to-renderer2',
       source: changelog(9),
+      audit: confirmed(),
     },
     {
       id: 'v9-core-render-component-type',
@@ -147,6 +182,7 @@ export const REMOVED_APIS: RemovedApiData = {
       replacement: 'RendererType2',
       migration: 'unknown',
       source: changelog(9),
+      audit: confirmed(),
     },
     {
       id: 'v9-core-root-renderer',
@@ -160,6 +196,7 @@ export const REMOVED_APIS: RemovedApiData = {
       replacement: 'RendererFactory2',
       migration: 'unknown',
       source: changelog(9),
+      audit: confirmed(),
     },
     {
       id: 'v9-forms-ngform-element',
@@ -175,6 +212,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(9),
       source: changelog(9),
       references: [updateGuide('ngForm selector')],
+      audit: confirmed(),
     },
     {
       id: 'v9-forms-ngform-selector-warning',
@@ -190,6 +228,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(9),
       source: changelog(9),
+      audit: confirmed(),
     },
     {
       id: 'v9-forms-forms-module-with-config',
@@ -205,6 +244,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(9),
       source: changelog(9),
+      audit: confirmed(),
     },
 
     // Angular 10
@@ -223,6 +263,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(10),
       migrationNote: 'migration-v10-module-with-providers',
       source: changelog(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-eval-source-map',
@@ -241,6 +282,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-vendor-source-map',
@@ -258,6 +300,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config moves the value to sourceMap.vendor in application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed('When sourceMap is false the migration drops the value instead of moving it.'),
     },
     {
       id: 'v10-build-angular-profile',
@@ -275,6 +318,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-skip-app-shell',
@@ -293,6 +337,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-element-explorer',
@@ -311,6 +356,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-server-common-chunk',
@@ -329,6 +375,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-server-vendor-chunk',
@@ -347,6 +394,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config removes it from @angular-devkit/build-angular targets of application projects.',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
     {
       id: 'v10-build-angular-es5-browser-support',
@@ -369,6 +417,7 @@ export const REMOVED_APIS: RemovedApiData = {
         cliFile(9, 'packages/angular_devkit/build_angular/src/browser/schema.json', 'Browser builder schema, 9.0.0 (option deprecated)'),
         cliFile(10, 'packages/angular_devkit/build_angular/src/browser/schema.json', 'Browser builder schema, 10.0.0 (option removed)'),
       ],
+      audit: confirmed(),
     },
     {
       id: 'v10-cli-typescript-mismatch',
@@ -385,6 +434,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(10),
       migrationNote: 'update-angular-config',
       source: cliReleaseNotes(10),
+      audit: confirmed(),
     },
 
     // Angular 11
@@ -402,6 +452,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(11),
       source: changelog(11),
       references: [updateGuide('v11 CollectionChangeRecord')],
+      audit: confirmed(),
     },
     {
       id: 'v11-core-view-encapsulation-native',
@@ -418,6 +469,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(11),
       migrationNote: 'migration-v11-native-view-encapsulation',
       source: changelog(11),
+      audit: confirmed(),
     },
     {
       id: 'v11-router-preserve-query-params-template',
@@ -434,6 +486,7 @@ export const REMOVED_APIS: RemovedApiData = {
         'The v11 migration migration-v11-router-preserve-query-params covers NavigationExtras; template coverage is not stated.',
       source: changelog(11),
       references: [updateGuide('routerlink preserveQueryParams')],
+      audit: confirmed(),
     },
     {
       id: 'v11-platform-webworker',
@@ -451,6 +504,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(11),
       source: changelog(11),
       references: [updateGuide('platform-webworker')],
+      audit: confirmed(),
     },
     {
       id: 'v11-platform-webworker-dynamic',
@@ -468,6 +522,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(11),
       source: changelog(11),
       references: [updateGuide('platform-webworker')],
+      audit: confirmed(),
     },
     {
       id: 'v11-build-angular-rebase-root-relative-css-urls',
@@ -486,6 +541,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(11),
       migrationNote: 'update-angular-config-v11 removes it from @angular-devkit/build-angular targets.',
       source: cliReleaseNotes(11),
+      audit: confirmed(),
     },
     {
       id: 'v11-build-angular-karma-environment',
@@ -507,6 +563,7 @@ export const REMOVED_APIS: RemovedApiData = {
       references: [
         cliFile(10, 'packages/angular_devkit/build_angular/src/karma/schema.json', 'Karma builder schema, 10.0.0 (option has no effect)'),
       ],
+      audit: confirmed(),
     },
     {
       id: 'v11-build-ng-packagr-builder',
@@ -523,6 +580,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(11),
       migrationNote: 'replace-ng-packagr-builder',
       source: cliReleaseNotes(11),
+      audit: confirmed(),
     },
 
     // Angular 12
@@ -538,10 +596,14 @@ export const REMOVED_APIS: RemovedApiData = {
       major: 12,
       summary: 'The deprecated i18nFile option has been removed from the browser and server builders.',
       replacement: 'The locales object in the project i18n configuration',
-      migration: 'yes',
+      migration: 'unknown',
       migrationSource: cliMigrations(12),
-      migrationNote: 'remove-deprecated-i18n-options converts it to the non-deprecated options.',
+      migrationNote:
+        'remove-deprecated-i18n-options deletes it and adds the project i18n locales only when the project has an extract-i18n target and a build target using the browser builder; when outputPath does not end in the locale it keeps the option and logs a warning.',
       source: cliChangelog(12),
+      audit: corrected(
+        'migration: yes to unknown, because the migration keeps the option and logs a warning when outputPath does not end in the locale. migrationNote: states that case, and that the locales object is added only when the project has an extract-i18n target and a build target using the browser builder.',
+      ),
     },
     {
       id: 'v12-build-angular-i18n-format',
@@ -558,8 +620,9 @@ export const REMOVED_APIS: RemovedApiData = {
       noReplacementReason: 'The format is now determined automatically; delete the option.',
       migration: 'yes',
       migrationSource: cliMigrations(12),
-      migrationNote: 'remove-deprecated-i18n-options converts it to the non-deprecated options.',
+      migrationNote: 'remove-deprecated-i18n-options deletes it from every browser and server configuration.',
       source: cliChangelog(12),
+      audit: corrected('migrationNote: the migration deletes the option instead of converting it; the format is detected automatically.'),
     },
     {
       id: 'v12-build-angular-i18n-locale',
@@ -573,10 +636,14 @@ export const REMOVED_APIS: RemovedApiData = {
       major: 12,
       summary: 'The deprecated i18nLocale option has been removed from the browser and server builders.',
       replacement: 'localize',
-      migration: 'yes',
+      migration: 'unknown',
       migrationSource: cliMigrations(12),
-      migrationNote: 'remove-deprecated-i18n-options converts it to the non-deprecated options.',
+      migrationNote:
+        'remove-deprecated-i18n-options replaces it with localize; when outputPath does not end in the locale it keeps the option and logs a warning.',
       source: cliChangelog(12),
+      audit: corrected(
+        'migration: yes to unknown, because the migration keeps the option and logs a warning when outputPath does not end in the locale. migrationNote: states that case.',
+      ),
     },
     {
       id: 'v12-build-angular-extract-i18n-locale',
@@ -592,8 +659,12 @@ export const REMOVED_APIS: RemovedApiData = {
       replacement: 'i18n.sourceLocale in the project configuration',
       migration: 'yes',
       migrationSource: cliMigrations(12),
-      migrationNote: 'remove-deprecated-i18n-options converts it to the non-deprecated options.',
+      migrationNote:
+        'remove-deprecated-i18n-options deletes it and copies the value to i18n.sourceLocale only when the project build target uses the browser builder and sets i18nLocale and i18nFile.',
       source: cliChangelog(12),
+      audit: corrected(
+        'migrationNote: the migration copies the value to i18n.sourceLocale only when the project build target uses the browser builder and sets i18nLocale and i18nFile.',
+      ),
     },
     {
       id: 'v12-build-angular-extract-i18n-format',
@@ -611,6 +682,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(12),
       migrationNote: 'remove-deprecated-i18n-options converts it to the non-deprecated options.',
       source: cliChangelog(12),
+      audit: confirmed(),
     },
     {
       id: 'v12-build-angular-extract-i18n-ivy',
@@ -631,6 +703,7 @@ export const REMOVED_APIS: RemovedApiData = {
       references: [
         cliFile(11, 'packages/angular_devkit/build_angular/src/extract-i18n/schema.json', 'Extract-i18n builder schema, 11.0.0 (ivy option)'),
       ],
+      audit: confirmed(),
     },
     {
       id: 'v12-build-angular-lazy-modules',
@@ -649,6 +722,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(12),
       migrationNote: 'update-angular-config-v12',
       source: cliChangelog(12),
+      audit: confirmed(),
     },
 
     // Angular 13
@@ -666,6 +740,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(13),
       source: changelog(13),
+      audit: confirmed(),
     },
     {
       id: 'v13-core-ng-module-factory-loader',
@@ -680,6 +755,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(13),
       source: changelog(13),
+      audit: confirmed(),
     },
     {
       id: 'v13-router-spy-ng-module-factory-loader',
@@ -696,6 +772,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(13),
       source: changelog(13),
       references: [updateGuide('v13 removed symbols')],
+      audit: confirmed(),
     },
     {
       id: 'v13-router-deprecated-load-children',
@@ -711,6 +788,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(13),
       source: changelog(13),
       references: [updateGuide('v13 removed symbols')],
+      audit: confirmed(),
     },
     {
       id: 'v13-build-angular-extract-css',
@@ -729,6 +807,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13; update-angular-config-v11 already removed it.',
       source: cliChangelog(13),
+      audit: confirmed(),
     },
     {
       id: 'v13-build-angular-dev-server-aot',
@@ -746,6 +825,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-source-map',
@@ -763,6 +843,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-deploy-url',
@@ -780,6 +861,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-base-href',
@@ -797,6 +879,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-vendor-chunk',
@@ -814,6 +897,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-common-chunk',
@@ -831,6 +915,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-optimization',
@@ -848,6 +933,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-dev-server-progress',
@@ -865,6 +951,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed('The migration deletes the option; it does not copy the value to the browser target.'),
     },
     {
       id: 'v13-build-angular-serve-path-default-warning',
@@ -883,6 +970,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed(),
     },
     {
       id: 'v13-build-angular-hmr-warning',
@@ -901,6 +989,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13',
       source: cliChangelog(13),
+      audit: confirmed(),
     },
     {
       id: 'v13-build-angular-tslint-builder',
@@ -917,6 +1006,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(13),
       migrationNote: 'update-angular-config-v13 deletes the target; it does not set up angular-eslint.',
       source: cliChangelog(13),
+      audit: confirmed(),
     },
 
     // Angular 14
@@ -937,6 +1027,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(14),
       source: changelog(14),
       references: [updateGuide('v14 aotSummaries')],
+      audit: confirmed('Only the configureTestingModule key is detected; initTestEnvironment also took aotSummaries.'),
     },
     {
       id: 'v14-cdk-testing-protractor',
@@ -951,6 +1042,7 @@ export const REMOVED_APIS: RemovedApiData = {
       noReplacementReason: 'The update guide gives no replacement; Protractor support was dropped.',
       migration: 'unknown',
       source: updateGuide('v14 deprecate protractor entry'),
+      audit: confirmed(),
     },
     {
       id: 'v14-build-angular-show-circular-dependencies',
@@ -969,6 +1061,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(14),
       migrationNote: 'remove-show-circular-dependencies-option',
       source: cliChangelog(14),
+      audit: confirmed(),
     },
 
     // Angular 15
@@ -987,6 +1080,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'unknown',
       source: changelog(15),
       references: [updateGuide('v15 no-ivy')],
+      audit: confirmed(),
     },
     {
       id: 'v15-router-relative-link-resolution',
@@ -1005,6 +1099,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(15),
       migrationNote: 'migration-v15-relative-link-resolution',
       source: changelog(15),
+      audit: confirmed(),
     },
     {
       id: 'v15-build-angular-bundle-dependencies',
@@ -1022,6 +1117,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(15),
       migrationNote: 'update-workspace-config',
       source: cliChangelog(15),
+      audit: confirmed(),
     },
 
     // Angular 16
@@ -1039,6 +1135,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(16),
       migrationNote: 'The v12 migration migration-v12-xhr-factory already moves this import.',
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-core-ng-module-entry-components',
@@ -1056,6 +1153,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(16),
       migrationNote: 'The v14 migration migration-entry-components already removes it.',
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-core-component-entry-components',
@@ -1073,6 +1171,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(16),
       migrationNote: 'The v14 migration migration-entry-components already removes it.',
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-core-analyze-for-entry-components',
@@ -1088,6 +1187,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(16),
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-core-reflective-injector',
@@ -1102,6 +1202,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(16),
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-platform-browser-browser-transfer-state-module',
@@ -1117,6 +1218,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(16),
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-platform-server-render-module-factory',
@@ -1131,6 +1233,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(16),
       source: changelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-cli-default-project',
@@ -1148,6 +1251,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(16),
       migrationNote: 'remove-default-project-option',
       source: cliChangelog(16),
+      audit: confirmed(),
     },
     {
       id: 'v16-cli-default-collection',
@@ -1167,6 +1271,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(16),
       migrationNote: 'replace-default-collection-option',
       source: cliChangelog(16),
+      audit: confirmed(),
     },
 
     // Angular 17
@@ -1183,6 +1288,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(17),
       source: changelog(17),
+      audit: confirmed(),
     },
     {
       id: 'v17-router-testing-setup-testing-router',
@@ -1197,6 +1303,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(17),
       source: changelog(17),
+      audit: confirmed(),
     },
     {
       id: 'v17-router-malformed-uri-error-handler',
@@ -1213,6 +1320,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(17),
       source: changelog(17),
+      audit: confirmed(),
     },
 
     // Angular 18
@@ -1231,6 +1339,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationNote: 'The v11 migration migration-v11-wait-for-async already renames it.',
       source: changelog(18),
       references: [updateGuide('18.0.0: async has been removed, use `waitForAsync` instead')],
+      audit: confirmed('The update guide step says async from @angular/core; the 17.0.0 export is in @angular/core/testing (testing.ts).'),
     },
     {
       id: 'v18-platform-browser-transfer-state',
@@ -1246,6 +1355,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(18),
       migrationNote: 'The v17 migration migration-transfer-state already moves this import.',
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-platform-browser-state-key',
@@ -1261,6 +1371,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(18),
       migrationNote: 'The v17 migration migration-transfer-state already moves this import.',
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-platform-browser-make-state-key',
@@ -1276,6 +1387,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(18),
       migrationNote: 'The v17 migration migration-transfer-state already moves this import.',
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-common-is-platform-worker-ui',
@@ -1291,6 +1403,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(18),
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-common-is-platform-worker-app',
@@ -1306,6 +1419,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(18),
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-platform-browser-dynamic-resource-cache-provider',
@@ -1321,6 +1435,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(18),
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-platform-server-platform-dynamic-server',
@@ -1335,6 +1450,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(18),
       source: changelog(18),
+      audit: confirmed(),
     },
     {
       id: 'v18-platform-server-server-transfer-state-module',
@@ -1350,6 +1466,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(18),
       source: changelog(18),
+      audit: confirmed(),
     },
 
     // Angular 19
@@ -1367,6 +1484,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(19),
       migrationNote: 'pending-tasks',
       source: changelog(19),
+      audit: confirmed(),
     },
     {
       id: 'v19-platform-browser-with-server-transition',
@@ -1382,6 +1500,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(19),
       source: changelog(19),
+      audit: confirmed(),
     },
     {
       id: 'v19-ssr-common-engine',
@@ -1397,6 +1516,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(19),
       migrationNote: 'update-ssr-imports',
       source: cliChangelog(19),
+      audit: confirmed(),
     },
     {
       id: 'v19-build-angular-browser-target',
@@ -1414,6 +1534,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: cliMigrations(19),
       migrationNote: 'update-workspace-config renames it to buildTarget in application projects.',
       source: cliChangelog(19),
+      audit: confirmed('update-workspace-config renames the option only in projects whose projectType is application.'),
     },
     {
       id: 'v19-build-angular-protractor-builder',
@@ -1433,6 +1554,7 @@ export const REMOVED_APIS: RemovedApiData = {
       references: [
         cliFile(19, 'packages/angular_devkit/build_angular/builders.json', '@angular-devkit/build-angular 19.0.0 builders'),
       ],
+      audit: confirmed(),
     },
 
     // Angular 20
@@ -1451,6 +1573,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(20),
       migrationNote: 'test-bed-get',
       source: changelog(20),
+      audit: confirmed(),
     },
     {
       id: 'v20-core-inject-flags',
@@ -1466,6 +1589,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(20),
       migrationNote: 'inject-flags',
       source: changelog(20),
+      audit: confirmed(),
     },
     {
       id: 'v20-core-testing-flush-effects',
@@ -1481,6 +1605,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(20),
       source: changelog(20),
+      audit: confirmed(),
     },
     {
       id: 'v20-core-provide-experimental-check-no-changes',
@@ -1495,6 +1620,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(20),
       source: changelog(20),
+      audit: confirmed(),
     },
     {
       id: 'v20-core-provide-experimental-zoneless',
@@ -1509,6 +1635,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(20),
       source: changelog(20),
+      audit: confirmed(),
     },
     {
       id: 'v20-core-after-render',
@@ -1523,23 +1650,31 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(20),
       source: changelog(20),
+      audit: confirmed(),
     },
 
     // Angular 21
     {
-      id: 'v21-core-ng-module-factory',
-      kind: 'symbol',
-      package: '@angular/core',
-      symbol: 'NgModuleFactory',
-      label: 'NgModuleFactory',
+      id: 'v21-common-ng-component-outlet-ng-module-factory',
+      kind: 'template',
+      package: '@angular/common',
+      pattern: `\\bngComponentOutletNgModuleFactory\\b|\\*ngComponentOutlet\\s*=\\s*(?:"[^"]*|'[^']*)\\bngModuleFactory\\b`,
+      label: 'NgComponentOutlet ngModuleFactory input',
       change: 'removed',
       major: 21,
-      summary: 'NgModuleFactory has been removed.',
-      replacement: 'The NgModule class itself',
+      summary: 'The deprecated ngModuleFactory input of NgComponentOutlet has been removed.',
+      replacement: 'ngComponentOutletNgModule with the NgModule class',
       migration: 'no',
       migrationSource: coreMigrations(21),
       source: changelog(21),
-      references: [updateGuide('21.0.0-ngmodulefactory-removed')],
+      references: [
+        updateGuide('21.0.0-ngmodulefactory-removed'),
+        ngComponentOutlet(20),
+        ngComponentOutlet(21),
+      ],
+      audit: added(
+        'Written by the audit in place of v21-core-ng-module-factory: the 21.0.0 change in the common section (commit 25f593ce2a) removed this input; ng_component_outlet.ts has it at 20.0.0 and not at 21.0.0.',
+      ),
     },
     {
       id: 'v21-core-component-module-id',
@@ -1558,6 +1693,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationNote: 'The v16 migration migration-v16-remove-module-id already removes it.',
       source: changelog(21),
       references: [updateGuide('21.0.0-remove-moduleid-property')],
+      audit: confirmed(),
     },
     {
       id: 'v21-core-component-interpolation',
@@ -1575,6 +1711,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(21),
       source: changelog(21),
       references: [updateGuide('21.0.0-remove-interpolation-option')],
+      audit: confirmed(),
     },
     {
       id: 'v21-core-ignore-changes-outside-zone',
@@ -1588,9 +1725,14 @@ export const REMOVED_APIS: RemovedApiData = {
       summary: 'ignoreChangesOutsideZone is no longer available as a ZoneJS change detection option.',
       replacement: 'none',
       noReplacementReason: 'The option was removed; delete it.',
-      migration: 'unknown',
-      migrationNote: 'The v21 bootstrap-options-migration moves bootstrap options to providers; whether it drops this one is not stated.',
+      migration: 'no',
+      migrationSource: coreMigrations(21),
+      migrationNote:
+        'The v21 bootstrap-options-migration skips calls that already have provideZoneChangeDetection, so it leaves this key; it drops ignoreChangesOutsideZone only from bootstrapModule options.',
       source: changelog(21),
+      audit: corrected(
+        'migration: unknown to no, migrationSource added, migrationNote rewritten. bootstrap-options-migration (21.0.0 migration.ts) returns before any change when a provideZoneChangeDetection or provideZonelessChangeDetection call exists.',
+      ),
     },
     {
       id: 'v21-platform-browser-application-config',
@@ -1606,6 +1748,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(21),
       migrationNote: 'application-config-core',
       source: changelog(21),
+      audit: confirmed(),
     },
     {
       id: 'v21-upgrade-upgrade-adapter',
@@ -1620,6 +1763,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(21),
       source: changelog(21),
+      audit: confirmed(),
     },
 
     // Angular 22
@@ -1636,6 +1780,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(22),
       source: changelog(22),
+      audit: confirmed(),
     },
     {
       id: 'v22-core-component-factory',
@@ -1650,6 +1795,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(22),
       source: changelog(22),
+      audit: confirmed(),
     },
     {
       id: 'v22-core-create-ng-module-ref',
@@ -1664,6 +1810,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(22),
       source: changelog(22),
+      audit: confirmed(),
     },
     {
       id: 'v22-router-provide-routes',
@@ -1678,6 +1825,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migration: 'no',
       migrationSource: coreMigrations(22),
       source: changelog(22),
+      audit: confirmed(),
     },
     {
       id: 'v22-upgrade-get-angular-lib',
@@ -1689,9 +1837,14 @@ export const REMOVED_APIS: RemovedApiData = {
       major: 22,
       summary: 'The deprecated getAngularLib has been removed.',
       replacement: 'getAngularJSGlobal',
-      migration: 'unknown',
+      migration: 'no',
+      migrationSource: coreMigrations(22),
+      migrationNote: '@angular/upgrade 22.0.0 ships no ng update migrations.',
       source: changelog(22),
       references: [updateGuide('22.0.0-upgrade-angular-js-global-migration')],
+      audit: corrected(
+        'migration: unknown to no, migrationSource and migrationNote added. @angular/upgrade 22.0.0 declares no ng update migrations and the @angular/core 22.0.0 list has none for it.',
+      ),
     },
     {
       id: 'v22-upgrade-set-angular-lib',
@@ -1703,9 +1856,14 @@ export const REMOVED_APIS: RemovedApiData = {
       major: 22,
       summary: 'The deprecated setAngularLib has been removed.',
       replacement: 'setAngularJSGlobal',
-      migration: 'unknown',
+      migration: 'no',
+      migrationSource: coreMigrations(22),
+      migrationNote: '@angular/upgrade 22.0.0 ships no ng update migrations.',
       source: changelog(22),
       references: [updateGuide('22.0.0-upgrade-angular-js-global-migration')],
+      audit: corrected(
+        'migration: unknown to no, migrationSource and migrationNote added. @angular/upgrade 22.0.0 declares no ng update migrations and the @angular/core 22.0.0 list has none for it.',
+      ),
     },
     {
       id: 'v22-platform-browser-hammer-module',
@@ -1722,6 +1880,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(22),
       source: changelog(22),
       references: [hammerExports(21), hammerExports(22)],
+      audit: confirmed('The HammerLoader type was removed too; it is not an entry.'),
     },
     {
       id: 'v22-platform-browser-hammer-gesture-config',
@@ -1738,6 +1897,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(22),
       source: changelog(22),
       references: [hammerExports(21), hammerExports(22)],
+      audit: confirmed(),
     },
     {
       id: 'v22-platform-browser-hammer-gesture-config-token',
@@ -1754,6 +1914,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(22),
       source: changelog(22),
       references: [hammerExports(21), hammerExports(22)],
+      audit: confirmed(),
     },
     {
       id: 'v22-platform-browser-hammer-loader',
@@ -1770,22 +1931,7 @@ export const REMOVED_APIS: RemovedApiData = {
       migrationSource: coreMigrations(22),
       source: changelog(22),
       references: [hammerExports(21), hammerExports(22)],
-    },
-    {
-      id: 'v22-common-http-xhr-backend',
-      kind: 'symbol',
-      package: '@angular/common/http',
-      symbol: 'HttpXhrBackend',
-      label: 'HttpXhrBackend',
-      change: 'breaking',
-      major: 22,
-      summary: 'XHR support, needed for upload progress reports, is no longer included by default.',
-      replacement: 'provideHttpClient(withXhr())',
-      migration: 'yes',
-      migrationSource: coreMigrations(22),
-      migrationNote: 'http-xhr-backend',
-      source: changelog(22),
-      references: [updateGuide('22.0.0-http-xhr-backend-explicit-opt-in')],
+      audit: confirmed(),
     },
     {
       id: 'v22-compiler-cli-full-template-type-check',
@@ -1798,9 +1944,14 @@ export const REMOVED_APIS: RemovedApiData = {
       major: 22,
       summary: 'The fullTemplateTypeCheck compiler option has been removed.',
       replacement: 'strictTemplates',
-      migration: 'unknown',
-      migrationNote: 'The v22 strict-templates-default migration adds strictTemplates when it is not set; removal of this option is not stated.',
+      migration: 'no',
+      migrationSource: coreMigrations(22),
+      migrationNote:
+        'The v22 strict-templates-default migration sets strictTemplates to false where it is not set and leaves fullTemplateTypeCheck in place.',
       source: updateGuide('22.0.0-full-template-type-check-removed'),
+      audit: corrected(
+        'migration: unknown to no, migrationSource added, migrationNote rewritten. strict-templates-default (v22.0.0 index.ts) writes only angularCompilerOptions.strictTemplates = false and never reads or deletes fullTemplateTypeCheck.',
+      ),
     },
     {
       id: 'v22-build-angular-jest-builder',
@@ -1819,6 +1970,7 @@ export const REMOVED_APIS: RemovedApiData = {
       references: [
         cliFile(22, 'packages/angular/build/builders.json', '@angular/build 22.0.0 builders'),
       ],
+      audit: confirmed(),
     },
     {
       id: 'v22-build-angular-web-test-runner-builder',
@@ -1837,7 +1989,11 @@ export const REMOVED_APIS: RemovedApiData = {
       references: [
         cliFile(22, 'packages/angular/build/builders.json', '@angular/build 22.0.0 builders'),
       ],
+      audit: confirmed(),
     },
+
+    // Angular Material and Angular CDK, 9 to 22 (src/data/components-apis.ts)
+    ...COMPONENTS_REMOVED_APIS,
   ],
   emptyMajors: [],
 };
@@ -2343,6 +2499,16 @@ export const REMOVED_API_EXCLUDED: readonly RemovedApiExclusion[] = [
   },
   {
     major: 21,
+    package: '@angular/core',
+    candidate: 'NgModuleFactory',
+    category: 'no-official-source',
+    reason:
+      'No source states that the symbol was removed: @angular/core still exports it at 21.0.0 and 22.0.0 (packages/core/src/linker.ts). The 21.0.0 line "NgModuleFactory has been removed" is in the common section and refers to the ngModuleFactory input of NgComponentOutlet, now entry v21-common-ng-component-outlet-ng-module-factory.',
+    source: changelog(21),
+    audit: removed('Was entry v21-core-ng-module-factory. An import of NgModuleFactory still compiles in 21 and 22, so a finding would ask for work that is not needed.'),
+  },
+  {
+    major: 21,
     package: '@angular/router',
     candidate: 'Router.lastSuccessfulNavigation is now a signal',
     category: 'not-detectable',
@@ -2356,6 +2522,16 @@ export const REMOVED_API_EXCLUDED: readonly RemovedApiExclusion[] = [
     category: 'not-detectable',
     reason: 'A Less compiler setting the builder applied itself, not an angular.json option; inline JavaScript in Less files would need a stylesheet scan.',
     source: cliChangelog(21),
+  },
+  {
+    major: 22,
+    package: '@angular/common/http',
+    candidate: 'HttpXhrBackend',
+    category: 'not-detectable',
+    reason:
+      'HttpXhrBackend is still exported and provided in root at 22.0.0, so code that imports it keeps working. What changed is the default backend of provideHttpClient(), now FetchBackend; it matters only to apps that need XHR-only features such as upload progress, which an import scan cannot tell. The http-xhr-backend migration adds withXhr() to every provideHttpClient() call without withFetch() or withXhr(), and the plan shows the update guide step 22.0.0-http-xhr-backend-explicit-opt-in.',
+    source: changelog(22),
+    audit: removed('Was entry v22-common-http-xhr-backend. Read in v22.0.0 packages/common/http/src/xhr.ts, provider.ts and module.ts and in the http-xhr-backend migration source.'),
   },
   {
     major: 22,
@@ -2397,4 +2573,5 @@ export const REMOVED_API_EXCLUDED: readonly RemovedApiExclusion[] = [
     reason: 'Behaviour and dependency changes with no removed angular.json option.',
     source: cliChangelog(22),
   },
+  ...COMPONENTS_EXCLUDED,
 ];

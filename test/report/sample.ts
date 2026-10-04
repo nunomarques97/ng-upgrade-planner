@@ -1,12 +1,18 @@
 // A realistic sample plan built by the real planner from in-memory registry data: updates, a
 // blocker, an unclassified private package, an undecidable library, stale cache data, a version
-// guessed from a range, unmet framework requirements, a long library name and removed-API scan
-// findings (confirmed, repeated, heuristic, outside the plan and an unscanned file). The JSON snapshot
+// guessed from a range, unmet framework requirements, a long library name, removed-API scan
+// findings (confirmed, repeated, heuristic, outside the plan and an unscanned file), deprecation
+// warnings (confirmed, heuristic and one outside the plan), RxJS 7 breaking changes with rxjs
+// 6.6.7 installed, shown as an advisory because no hop forces RxJS 7, and toolchain results: an
+// engines.node that is partly outside two hops and fully outside the last, and a lockfile
+// TypeScript outside every hop's range. The JSON snapshot
 // of this plan (sample-plan.json) is what the report tests and scripts/screenshot-report.mjs render.
+import { DEPRECATED_APIS, deprecationCoverage } from '../../src/data/deprecated-apis.js';
 import { REMOVED_APIS } from '../../src/data/removed-apis.js';
+import { RXJS_APIS } from '../../src/data/rxjs-apis.js';
 import { buildPlan, type UpgradePlan } from '../../src/plan/index.js';
 import type { PackageRecord, VersionRecord } from '../../src/registry/types.js';
-import type { ScanFinding, ScanResult } from '../../src/scan/index.js';
+import type { DeprecationScanFinding, RxjsScanFinding, ScanFinding, ScanResult } from '../../src/scan/index.js';
 import { TEMPLATE_REASON } from '../../src/scan/template.js';
 import { angularRecords, dependency, memorySource, project, record } from '../plan/helpers.js';
 
@@ -73,6 +79,85 @@ function found(entryId: string, file: string, line: number, column: number): Sca
   };
 }
 
+/**
+ * Deprecation warnings. The bundled data announces removals for 23 and 24 only, so the two in the
+ * plan (removal in 17, warned in the hop to 16) are written for the sample; the bundled one is for
+ * a removal after the target and is only counted.
+ */
+function deprecations(): DeprecationScanFinding[] {
+  const bundled = DEPRECATED_APIS.entries.find((item) => item.id === 'd23-platform-browser-provide-animations');
+  if (!bundled) throw new Error('no deprecated-API entry d23-platform-browser-provide-animations');
+  return [
+    {
+      file: 'src/app/core/legacy-token.provider.ts',
+      line: 3,
+      column: 10,
+      entryId: 'sample-deprecated-token',
+      package: '@angular/common',
+      api: 'SAMPLE_LEGACY_TOKEN',
+      deprecatedIn: 15,
+      removalMajor: 17,
+      replacement: 'the SAMPLE_TOKEN injection token',
+      confidence: 'confirmed',
+    },
+    {
+      file: 'src/app/checkout/checkout.component.html',
+      line: 12,
+      column: 5,
+      entryId: 'sample-deprecated-attribute',
+      package: '@angular/forms',
+      api: 'sampleOld template attribute',
+      deprecatedIn: 15,
+      removalMajor: 17,
+      replacement: 'the sampleNew attribute',
+      confidence: 'heuristic',
+      reason: TEMPLATE_REASON,
+    },
+    {
+      file: 'src/main.ts',
+      line: 8,
+      column: 5,
+      entryId: bundled.id,
+      package: bundled.package,
+      api: bundled.label,
+      deprecatedIn: bundled.deprecatedIn,
+      removalMajor: bundled.removalMajor,
+      replacement: bundled.replacement,
+      confidence: 'confirmed',
+    },
+  ];
+}
+
+/** RxJS 7 breaking changes for bundled entries, as the scan reports them. */
+function rxjs(): RxjsScanFinding[] {
+  const at = (entryId: string, file: string, line: number, column: number): RxjsScanFinding => {
+    const entry = RXJS_APIS.entries.find((item) => item.id === entryId);
+    if (!entry) throw new Error(`no RxJS entry ${entryId}`);
+    return {
+      file,
+      line,
+      column,
+      entryId,
+      package: entry.package,
+      api: entry.label,
+      change: entry.change,
+      rxjsMajor: entry.rxjsMajor,
+      replacement: entry.replacement,
+    };
+  };
+  return [
+    at('rx7-default-if-empty-no-value', 'src/app/catalog/catalog.service.ts', 41, 9),
+    at('rx7-iif-missing-result', 'src/app/checkout/payment-options.service.ts', 27, 12),
+    at('rx7-rx-import', 'src/app/legacy/rx-helpers.ts', 1, 21),
+  ];
+}
+
+/** The bundled coverage plus the removal major of the sample's own warnings. */
+function sampleDeprecationCoverage(): { removalMajors: number[]; retrieved: string } {
+  const coverage = deprecationCoverage(DEPRECATED_APIS);
+  return { ...coverage, removalMajors: [17, ...coverage.removalMajors] };
+}
+
 function scanResult(): ScanResult {
   // A template match is always heuristic. The bundled data has no template entry for 15 to 17, so
   // this one is written for the sample.
@@ -109,6 +194,8 @@ function scanResult(): ScanResult {
       found('v17-router-malformed-uri-error-handler', 'src/app/app-routing.module.ts', 13, 5),
       found('v18-platform-browser-transfer-state', 'src/app/state/transfer.service.ts', 2, 10),
     ],
+    deprecations: deprecations(),
+    rxjs: rxjs(),
     unscanned: [{ file: 'src/app/generated/api-client.ts', reason: 'larger than 1024 kB, not read' }],
   };
 }
@@ -139,15 +226,22 @@ export async function samplePlan(): Promise<UpgradePlan> {
       dependency('ngx-flex-grid', '2.0.0'),
       dependency('private-ui-kit', '1.4.0'),
     ],
-    { typescript: '4.7.4', 'zone.js': '0.11.8' },
+    { typescript: '4.7.4', 'zone.js': '0.11.8', rxjs: '6.6.7' },
   );
   app.name = 'demo-shop';
+  // Inside Angular 15's Node.js range in part, Angular 16's in part, and outside Angular 17's.
+  app.nodeEngine = { status: 'declared', range: '^14.15.0 || ^16.13.0' };
   app.warnings = [
     { code: 'not-in-lockfile', message: '@ngx-translate/core has no usable entry in package-lock.json; falling back to the package.json range.' },
   ];
   return buildPlan(app, source, {
     targetMajor: 17,
     nodeVersion: '16.20.2',
-    scan: { result: scanResult(), coverage: REMOVED_APIS },
+    scan: {
+      result: scanResult(),
+      coverage: REMOVED_APIS,
+      deprecations: sampleDeprecationCoverage(),
+      rxjs: { rxjsMajor: RXJS_APIS.rxjsMajor, retrieved: RXJS_APIS.retrieved },
+    },
   });
 }

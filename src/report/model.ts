@@ -1,6 +1,7 @@
 // Shared wording and grouping for the terminal summary and the reports, so every format says the
 // same thing. Returned strings are not escaped; each renderer escapes them for its format.
 import type {
+  DeprecationFinding,
   Effort,
   Fact,
   Hop,
@@ -9,7 +10,10 @@ import type {
   PlanStep,
   RemovedApiFinding,
   Requirement,
+  RxjsFinding,
   StepLevel,
+  ToolchainCheck,
+  ToolchainName,
   UnverifiedItem,
   UpgradePlan,
 } from '../plan/types.js';
@@ -32,6 +36,12 @@ export interface HopView {
   unknown: LibraryHopResult[];
   /** Requirements that need action in this hop. */
   warnings: Requirement[];
+  /** Node.js and TypeScript, in that order. */
+  toolchain: ToolchainCheck[];
+  /** Toolchain checks with status blocker; they count as blockers of the hop. */
+  toolchainBlockers: ToolchainCheck[];
+  /** Toolchain checks with status warning; they count as requirement warnings of the hop. */
+  toolchainWarnings: ToolchainCheck[];
   steps: Readonly<Record<StepLevel, PlanStep[]>>;
 }
 
@@ -42,15 +52,75 @@ export function isUpdate(library: LibraryHopResult): boolean {
 export function hopView(hop: Hop): HopView {
   const steps: Record<StepLevel, PlanStep[]> = { basic: [], medium: [], advanced: [] };
   for (const step of hop.steps) steps[step.level].push(step);
+  const toolchain = [hop.toolchain.node, hop.toolchain.typescript];
   return {
     hop,
     updates: hop.libraries.filter(isUpdate),
     blockers: hop.libraries.filter((library) => library.status === 'blocker'),
     unknown: hop.libraries.filter((library) => library.status === 'unknown'),
     warnings: hop.requirements.filter((requirement) => requirement.flagged),
+    toolchain,
+    toolchainBlockers: toolchain.filter((check) => check.status === 'blocker'),
+    toolchainWarnings: toolchain.filter((check) => check.status === 'warning'),
     steps,
   };
 }
+
+/** Library and toolchain blockers of a hop. */
+export function blockerCount(view: HopView): number {
+  return view.blockers.length + view.toolchainBlockers.length;
+}
+
+/** Framework requirements that need action and toolchain warnings of a hop. */
+export function requirementWarningCount(view: HopView): number {
+  return view.warnings.length + view.toolchainWarnings.length;
+}
+
+export const TOOLCHAIN_LABELS: Readonly<Record<ToolchainName, string>> = { node: 'Node.js', typescript: 'TypeScript' };
+
+export function toolchainStatusText(check: ToolchainCheck): string {
+  switch (check.status) {
+    case 'ok':
+      return 'in range';
+    case 'warning':
+      return 'warning';
+    case 'blocker':
+      return 'blocker';
+    case 'unverified':
+      return 'unverified';
+  }
+}
+
+/** What the project side of a check is, for example "engines.node" or "typescript from the lockfile". */
+export function toolchainProjectLabel(check: ToolchainCheck): string {
+  if (check.name === 'node') return 'engines.node';
+  return check.project.source === 'lockfile' ? 'typescript from the lockfile' : 'typescript, guessed';
+}
+
+/** The project side of a check as text, for example "engines.node 18" or "no engines.node". */
+export function toolchainProjectText(check: ToolchainCheck): string {
+  const value = check.project.value;
+  if (check.name === 'node') return value === null ? 'no engines.node' : `engines.node ${value}`;
+  if (value === null) return 'typescript not known';
+  return `typescript ${value}${check.project.source === 'lockfile' ? '' : ' (guessed)'}`;
+}
+
+/** The local Node.js version, which is context only. */
+export function localNodeText(plan: UpgradePlan): string {
+  const local = plan.toolchain.localNode.value;
+  return local === null ? 'not known' : `${local} (context only)`;
+}
+
+/** The project's engines.node for the summary facts. */
+export function enginesText(plan: UpgradePlan): string {
+  const { engines, enginesStatus } = plan.toolchain;
+  if (enginesStatus === 'missing') return 'none';
+  if (enginesStatus === 'invalid') return engines.value === null ? 'invalid' : `${engines.value} (invalid)`;
+  return engines.value ?? 'none';
+}
+
+export const TOOLCHAIN_HELP =
+  "Node.js ranges come from the engines field of @angular/core and @angular/cli, TypeScript ranges from the @angular/compiler-cli peer dependency. The project's engines.node decides the Node.js status: a blocker when it allows no version in the range, a warning when it also allows versions outside it. The local Node.js version is context only. A TypeScript outside the range in the lockfile is a blocker that is resolved after ng update by installing a TypeScript inside the range, unless ng update moved it there; a TypeScript guessed from a package.json range is not confirmed.";
 
 export function hopTitle(hop: Hop): string {
   return `Angular ${hop.from} to ${hop.to}`;
@@ -65,8 +135,8 @@ export function effortText(effort: Effort): string {
 }
 
 export function effortBreakdown(effort: Effort): string {
-  const { base, steps, majorBumps, requirements, blockers, removedApis } = effort.breakdown;
-  return `base ${base}, steps ${steps}, major library updates ${majorBumps}, framework requirements ${requirements}, blockers ${blockers}, removed APIs ${removedApis}`;
+  const { base, steps, majorBumps, requirements, blockers, toolchain, removedApis } = effort.breakdown;
+  return `base ${base}, steps ${steps}, major library updates ${majorBumps}, framework requirements ${requirements}, blockers ${blockers}, toolchain ${toolchain}, removed APIs ${removedApis}`;
 }
 
 /** Short scan status for the summary facts. */
@@ -96,11 +166,86 @@ export function scanNotes(plan: UpgradePlan): string[] {
     lines.push(`${aboveTarget} ${plural(aboveTarget, 'finding is', 'findings are')} for Angular versions after ${plan.target.major} and not part of this plan.`);
   }
   if (noHop > 0) lines.push(`${noHop} ${plural(noHop, 'finding is', 'findings are')} for Angular versions without a stable release and not listed.`);
+  lines.push(...deprecationNotes(plan));
+  lines.push(...rxjsNotes(plan));
   if (scan.unscanned.length > 0) {
     const count = scan.unscanned.length;
     lines.push(`${count} ${plural(count, 'file or folder', 'files or folders')} could not be scanned; see "Could not be verified".`);
   }
   return lines;
+}
+
+/** Plan-level sentences about the deprecation warnings: what the data covers and what is not listed. */
+export function deprecationNotes(plan: UpgradePlan): string[] {
+  const { deprecations } = plan.scan;
+  const lines: string[] = [];
+  const coverage = deprecations.coverage;
+  if (coverage !== null && coverage.removalMajors.length > 0) {
+    const majors = coverage.removalMajors.map((major) => `Angular ${major}`);
+    const list = majors.length === 1 ? majors[0]! : `${majors.slice(0, -1).join(', ')} or ${majors.at(-1)!}`;
+    lines.push(
+      `It also looked for Angular APIs whose removal is announced for ${list} (official sources read on ${coverage.retrieved}), shown as deprecation warnings in the hop before the removal.`,
+    );
+  }
+  const { atOrBelowCurrent, aboveTarget, noHop } = deprecations.notAttached;
+  const total = atOrBelowCurrent + aboveTarget + noHop;
+  if (total > 0) {
+    const parts = [
+      atOrBelowCurrent > 0 ? `${atOrBelowCurrent} for a removal in Angular ${plan.current.major + 1} or earlier` : null,
+      aboveTarget > 0 ? `${aboveTarget} for a removal after Angular ${plan.target.major + 1}` : null,
+      noHop > 0 ? `${noHop} before a version without a stable release` : null,
+    ].filter((part): part is string => part !== null);
+    lines.push(
+      `${total} deprecation ${plural(total, 'warning is', 'warnings are')} not listed because the hop before the announced removal is not part of this plan (${parts.join(', ')}).`,
+    );
+  }
+  return lines;
+}
+
+/** Plan-level sentences about the RxJS 7 breaking changes: what was looked for and how they are shown. */
+export function rxjsNotes(plan: UpgradePlan): string[] {
+  const { rxjs } = plan.scan;
+  if (rxjs.coverage === null) return [];
+  const count = rxjs.findings;
+  const lines = [
+    `It also looked for RxJS ${rxjs.coverage.rxjsMajor} breaking changes in files that import rxjs (official RxJS sources read on ${rxjs.coverage.retrieved}) and found ${count} ${plural(count, 'use', 'uses')}.`,
+  ];
+  if (count === 0) return lines;
+  if (rxjs.status === 'required' && rxjs.forcedBy !== null) {
+    lines.push(`They are work in the hop to Angular ${rxjs.forcedBy}, the first whose @angular/core accepts no RxJS 6.`);
+  } else if (rxjs.status === 'advisory') {
+    lines.push('No hop of this plan forces RxJS 7, so they are listed once as an advisory, without effort points.');
+  } else {
+    lines.push(`They are not listed: ${rxjs.reason}.`);
+  }
+  return lines;
+}
+
+/** The RxJS findings to list once at plan level, or an empty list when there is no advisory. */
+export function rxjsAdvisory(plan: UpgradePlan): RxjsFinding[] {
+  return plan.scan.rxjs.status === 'advisory' ? plan.scan.rxjs.advisory : [];
+}
+
+/** For example "3 uses of 2 RxJS APIs". */
+export function rxjsCountText(findings: readonly RxjsFinding[]): string {
+  const uses = findings.length;
+  const apis = new Set(findings.map((finding) => finding.entryId)).size;
+  return `${uses} ${plural(uses, 'use', 'uses')} of ${apis} RxJS ${plural(apis, 'API', 'APIs')}`;
+}
+
+/** Why the advisory findings are not work in any hop, as one sentence. */
+export function rxjsAdvisoryText(plan: UpgradePlan): string {
+  const { rxjs } = plan.scan;
+  return `Not blockers and no effort points: ${rxjs.reason}.`;
+}
+
+export const RXJS_HELP =
+  'RxJS 7 breaking changes are uses of rxjs APIs, found by their imports, that stop compiling or change behaviour in RxJS 7. Angular has no ng update migration for them; fix them by hand when rxjs moves from 6 to 7.';
+
+/** Why the RxJS findings are required in this hop, as one sentence. */
+export function rxjsRequiredText(plan: UpgradePlan, hop: Hop): string {
+  const installed = plan.scan.rxjs.installed ?? 'unknown';
+  return `Required in this hop: Angular ${hop.to} accepts no RxJS 6, so rxjs ${installed} must move to RxJS 7 or later here.`;
 }
 
 /** Why a hop lists no removed-API findings, or null when it has some. */
@@ -123,7 +268,23 @@ export function removedApiCountText(hop: Hop): string {
   return `${uses} ${plural(uses, 'use', 'uses')} of ${apis} ${plural(apis, 'API', 'APIs')} (${uses - heuristic} confirmed, ${heuristic} heuristic)`;
 }
 
-export function findingLocation(finding: RemovedApiFinding): string {
+/** For example "2 uses of 1 API (2 confirmed, 0 heuristic)". */
+export function deprecationCountText(hop: Hop): string {
+  const uses = hop.deprecations.length;
+  const apis = new Set(hop.deprecations.map((finding) => finding.entryId)).size;
+  const heuristic = hop.deprecations.filter((finding) => finding.confidence === 'heuristic').length;
+  return `${uses} ${plural(uses, 'use', 'uses')} of ${apis} deprecated ${plural(apis, 'API', 'APIs')} (${uses - heuristic} confirmed, ${heuristic} heuristic)`;
+}
+
+/** For example "deprecated in Angular 20, removal announced for Angular 23". */
+export function deprecationText(finding: DeprecationFinding): string {
+  return `deprecated in Angular ${finding.deprecatedIn}, removal announced for Angular ${finding.removalMajor}`;
+}
+
+export const DEPRECATION_HELP =
+  'Deprecation warnings are uses of Angular APIs whose removal is announced for the next major. They do not block this hop and add no effort points; replace them before the hop that removes them.';
+
+export function findingLocation(finding: RemovedApiFinding | DeprecationFinding | RxjsFinding): string {
   return `${finding.file}:${finding.line}`;
 }
 
@@ -214,6 +375,7 @@ export function unverifiedGroups(plan: UpgradePlan): { title: string; hop: numbe
 
 const SOURCE_TEXT: Readonly<Record<Fact<unknown>['source'], string>> = {
   lockfile: 'the lockfile',
+  'package-json': 'package.json',
   'package-json-range': 'the package.json range',
   registry: 'the npm registry',
   'registry-cache': 'the local registry cache',
@@ -233,15 +395,22 @@ export function hopConfirmedStatement(plan: UpgradePlan, hop: Hop): string {
   const requirements = hop.requirements.filter(
     (requirement) => requirement.status !== 'unknown' && requirement.range.confidence === 'confirmed',
   ).length;
+  const toolchain = [hop.toolchain.node, hop.toolchain.typescript];
+  const toolchainDecided = toolchain.filter((check) => check.status !== 'unverified' && check.range.confidence === 'confirmed').length;
   const parts = [
     `${decided} of ${hop.libraries.length} library ${plural(hop.libraries.length, 'result', 'results')} decided from published peer ranges`,
     `${requirements} of ${hop.requirements.length} framework ${plural(hop.requirements.length, 'requirement', 'requirements')} checked`,
+    `${toolchainDecided} of ${toolchain.length} toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile`,
   ];
   if (hop.stepCoverage === 'recorded') parts.push(`${hop.steps.length} official ${plural(hop.steps.length, 'step', 'steps')}`);
   if (hop.stepCoverage === 'none-recorded') parts.push('no official steps recorded for this hop');
   if (plan.scan.status === 'ran') {
     const found = hop.removedApis.filter((finding) => finding.confidence === 'confirmed').length;
     parts.push(`${found} removed-API ${plural(found, 'finding', 'findings')} confirmed by imports or parsed configuration`);
+    const warned = hop.deprecations.filter((finding) => finding.confidence === 'confirmed').length;
+    if (warned > 0) parts.push(`${warned} deprecation ${plural(warned, 'warning', 'warnings')} confirmed by imports`);
+    const rxjs = hop.rxjs.length;
+    if (rxjs > 0) parts.push(`${rxjs} RxJS 7 breaking ${plural(rxjs, 'change', 'changes')} confirmed by imports`);
   }
   return `${hopTitle(hop)}: ${parts.join('; ')}.`;
 }
@@ -259,6 +428,11 @@ export function confirmedStatements(plan: UpgradePlan, options: { hops?: boolean
   const target = plan.target.angular;
   if (plan.hops.length > 0 && target.confidence === 'confirmed' && target.value !== null) {
     lines.push(`Target Angular ${plan.target.major}: newest stable release ${target.value}, from ${sourceText(target)}.`);
+  }
+
+  const engines = plan.toolchain.engines;
+  if (plan.hops.length > 0 && engines.confidence === 'confirmed' && engines.value !== null) {
+    lines.push(`engines.node "${engines.value}", read from package.json, decides the Node.js status of each hop.`);
   }
 
   const sources = new Map<string, number>();
@@ -281,6 +455,10 @@ export function confirmedStatements(plan: UpgradePlan, options: { hops?: boolean
       `Removed-API scan of ${plan.scan.filesScanned} source ${plural(plan.scan.filesScanned, 'file', 'files')}, against data for Angular ${coverage.firstMajor} to ${coverage.lastMajor} taken from official Angular sources read on ${coverage.retrieved}.`,
     );
   }
+  const advisory = rxjsAdvisory(plan);
+  if (plan.hops.length > 0 && advisory.length > 0) {
+    lines.push(`RxJS 7 advisory: ${rxjsCountText(advisory)}, found by imports; no hop of this plan forces RxJS 7.`);
+  }
 
   const guide = plan.updateGuide;
   lines.push(
@@ -294,7 +472,7 @@ export function plural(count: number, one: string, many: string): string {
 }
 
 export const UNVERIFIED_INTRO =
-  'These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges, anything the registry data could not decide, removed-API findings from text matching and source the scan could not check. Check them by hand before relying on them.';
+  'These results could not be confirmed: unknown libraries, data from an outdated cache, versions guessed from package.json ranges, anything the registry data could not decide, removed-API and deprecation findings from text matching and source the scan could not check. Check them by hand before relying on them.';
 
 export const STATUS_HELP =
   'Library status comes only from the @angular peer dependency ranges each release publishes, checked against the newest stable Angular release of the hop. "unknown" is never treated as compatible.';

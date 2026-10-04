@@ -40,12 +40,25 @@ export type ProjectWarningCode =
   | 'invalid-dependency-spec'
   | 'duplicate-dependency'
   | 'not-in-lockfile'
-  | 'unresolved-version';
+  | 'unresolved-version'
+  | 'engines-node-missing'
+  | 'engines-node-invalid';
 
 export interface ProjectWarning {
   code: ProjectWarningCode;
   message: string;
   packageName?: string;
+}
+
+/**
+ * The project's `engines.node` in package.json:
+ * - declared: a valid semver range, in `range`
+ * - missing: no `engines` object or no `node` entry; `range` is null
+ * - invalid: present but not a valid range; `range` holds the text, or null when it is not a string
+ */
+export interface NodeEngine {
+  status: 'declared' | 'missing' | 'invalid';
+  range: string | null;
 }
 
 export interface ProjectInfo {
@@ -54,6 +67,8 @@ export interface ProjectInfo {
   /** Raw `packageManager` field from package.json, if any. */
   packageManager: string | null;
   lockfile: LockfileInfo | null;
+  /** Node.js versions the project declares it runs on. */
+  nodeEngine: NodeEngine;
   angular: {
     range: string;
     version: string;

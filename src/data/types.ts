@@ -58,6 +58,27 @@ export interface RemovedApiSource {
   title: string;
 }
 
+/**
+ * Outcome of re-reading an entry against its source (and migrationSource where present).
+ * confirmed: the sources state what the entry says. corrected: the entry was changed where a source
+ * contradicted it. removed: the entry was moved to REMOVED_API_EXCLUDED. unverified: a source could not
+ * be retrieved, so the entry is kept as it was without confirmation. added: the entry was written from
+ * its source after the audit, or by the audit in place of a removed entry, and was not re-read separately.
+ */
+export type RemovedApiAuditStatus = 'confirmed' | 'corrected' | 'removed' | 'unverified' | 'added';
+
+/** The audit record of one entry or of an exclusion created by the audit. */
+export interface RemovedApiAudit {
+  status: RemovedApiAuditStatus;
+  /** Date the sources were re-read (YYYY-MM-DD). */
+  read: string;
+  /**
+   * Required unless confirmed: the change made (corrected), the reason (removed), why the source could
+   * not be read (unverified) or why the entry was written (added). Optional context for confirmed.
+   */
+  note?: string;
+}
+
 interface RemovedApiBase {
   /** Stable identifier, lowercase words joined by hyphens. */
   id: string;
@@ -86,6 +107,8 @@ interface RemovedApiBase {
   source: RemovedApiSource;
   /** Further official documents that confirm details such as the entry point or the exact name. */
   references?: readonly RemovedApiSource[];
+  /** Result of the data audit (see docs/verification/data-audit.md). Every entry carries one. */
+  audit: RemovedApiAudit;
 }
 
 /** A TypeScript usage that counts only when the symbol is imported from `package`. */
@@ -172,6 +195,8 @@ export interface RemovedApiExclusion {
   category: RemovedApiExclusionReason;
   reason: string;
   source?: RemovedApiSource;
+  /** Present when the data audit removed the candidate from the entries (status 'removed'). */
+  audit?: RemovedApiAudit;
 }
 
 export interface RemovedApiData {
@@ -182,4 +207,145 @@ export interface RemovedApiData {
   lastMajor: number;
   entries: readonly RemovedApiEntry[];
   emptyMajors: readonly RemovedApiEmptyMajor[];
+}
+
+// Shape of the bundled dataset of Angular APIs deprecated with an announced removal major
+// (src/data/deprecated-apis.ts). Entries match like removed-API entries but only warn.
+
+interface DeprecatedApiBase {
+  /** Stable identifier, lowercase words joined by hyphens. */
+  id: string;
+  /** Import specifier the API belongs to: an @angular/* package or one of its entry points. */
+  package: string;
+  /** Short human-readable name of the API, as shown in reports. */
+  label: string;
+  /** Angular major that deprecated the API. */
+  deprecatedIn: number;
+  /** Angular major the source announces for the removal; always greater than deprecatedIn. */
+  removalMajor: number;
+  /** What is deprecated, in one sentence. */
+  summary: string;
+  /** What to use instead, or exactly 'none' together with noReplacementReason. */
+  replacement: string;
+  noReplacementReason?: string;
+  /** The official document that states the deprecation and the removal major. */
+  source: RemovedApiSource;
+  /** Further official documents, for example the deprecation of the same API on other symbols. */
+  references?: readonly RemovedApiSource[];
+  /** How the entry was written; every entry carries one. */
+  audit: RemovedApiAudit;
+}
+
+/** A deprecated TypeScript usage; it counts only when the symbol is imported from `package`. */
+export interface DeprecatedSymbolEntry extends DeprecatedApiBase {
+  kind: 'symbol';
+  /** Exported name, or '*' for any import of the entry point. */
+  symbol: string;
+  member?: string;
+  /** Property key of an object literal passed to the symbol, such as `animations` in `@Component`. */
+  key?: string;
+  withoutTypeArguments?: true;
+}
+
+/** A deprecated pattern in component templates (always a heuristic match). */
+export interface DeprecatedTemplateEntry extends DeprecatedApiBase {
+  kind: 'template';
+  /** JavaScript regular expression source, matched case-sensitively against template text. */
+  pattern: string;
+}
+
+export type DeprecatedApiEntry = DeprecatedSymbolEntry | DeprecatedTemplateEntry;
+
+/**
+ * no-removal-major: the sources announce no removal major. removal-passed: the announced major is
+ * released and the API was still there. not-detectable: a source scan cannot find the usage.
+ * internal-api: not part of the public API.
+ */
+export type DeprecatedApiExclusionReason = 'no-removal-major' | 'removal-passed' | 'not-detectable' | 'internal-api';
+
+/** A deprecated API that was considered and left out of the dataset, with the reason. */
+export interface DeprecatedApiExclusion {
+  package: string;
+  candidate: string;
+  /** Angular major that deprecated it, when a source states it. */
+  deprecatedIn: number | null;
+  category: DeprecatedApiExclusionReason;
+  reason: string;
+  source: RemovedApiSource;
+}
+
+export interface DeprecatedApiData {
+  /** Date the sources were read (YYYY-MM-DD). */
+  retrieved: string;
+  entries: readonly DeprecatedApiEntry[];
+}
+
+/** Any entry the source scan matches: a removed or changed API, a deprecated one, or an RxJS 7 breaking change. */
+export type ScanDataEntry = RemovedApiEntry | DeprecatedApiEntry | RxjsApiEntry;
+
+// Shape of the bundled dataset of RxJS 7 breaking changes (src/data/rxjs-apis.ts). Entries match
+// like removed-API symbol entries; the plan ties them to the hop that forces RxJS 7.
+
+/** An official RxJS document: a file of the ReactiveX/rxjs repository at a pinned commit, or rxjs.dev. */
+export interface RxjsApiSource {
+  url: string;
+  title: string;
+}
+
+/** A TypeScript usage of rxjs or one of its entry points that breaks in RxJS 7. */
+export interface RxjsSymbolEntry {
+  kind: 'symbol';
+  /** Stable identifier: rx7- and lowercase words joined by hyphens. */
+  id: string;
+  /** Import specifier: rxjs or one of its entry points, such as rxjs/operators. */
+  package: string;
+  /** Exported name, or '*' for any import of the entry point. */
+  symbol: string;
+  /** Static member read on the symbol, for example `sortActions` in `VirtualTimeScheduler.sortActions`. */
+  member?: string;
+  /** Only a call of the symbol with fewer arguments than this counts (a call with a spread argument never does). */
+  minArguments?: number;
+  /** Short human-readable name of the API, as shown in reports. */
+  label: string;
+  change: RemovedApiChange;
+  /** RxJS major where the usage breaks. */
+  rxjsMajor: 7;
+  /** What changes, in one sentence. */
+  summary: string;
+  /** What to use instead, or exactly 'none' together with noReplacementReason. */
+  replacement: string;
+  noReplacementReason?: string;
+  /** The official document that states the breaking change. */
+  source: RxjsApiSource;
+  /** Further official documents, for example the CHANGELOG entry of the same change. */
+  references?: readonly RxjsApiSource[];
+  /** How the entry was written; every entry carries one. */
+  audit: RemovedApiAudit;
+}
+
+export type RxjsApiEntry = RxjsSymbolEntry;
+
+/**
+ * not-detectable: the usage cannot be told apart by imports and syntax (an instance method, a
+ * type-dependent or runtime-only change). outside-scope: a toolchain or dependency requirement, not a
+ * source usage. no-official-source: visible in the published package but not stated in the official
+ * documents. already-broken: RxJS 6 typings already reject the usage, so a TypeScript project cannot have it.
+ */
+export type RxjsApiExclusionReason = 'not-detectable' | 'outside-scope' | 'no-official-source' | 'already-broken';
+
+/** An RxJS 7 breaking change that was considered and left out of the dataset, with the reason. */
+export interface RxjsApiExclusion {
+  package: string;
+  candidate: string;
+  category: RxjsApiExclusionReason;
+  reason: string;
+  source: RxjsApiSource;
+}
+
+export interface RxjsApiData {
+  /** Date the sources were read (YYYY-MM-DD). */
+  retrieved: string;
+  /** RxJS major the entries describe breaking changes of. */
+  rxjsMajor: 7;
+  entries: readonly RxjsApiEntry[];
 }

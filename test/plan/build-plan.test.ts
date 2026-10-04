@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { hopEffort, totalEffort } from '../../src/plan/effort.js';
 import { buildPlan, isPlanError, type LibraryHopResult, type PlanStep, type UpgradePlan } from '../../src/plan/index.js';
 import type { PackageRecord } from '../../src/registry/types.js';
-import { angularRecords, dependency, guide, memorySource, peers, project, record, step } from './helpers.js';
+import { angularRecords, dependency, guide, memorySource, peers, project, record, step, toolchain } from './helpers.js';
 
 const GUIDE = guide([
   step(1420, 1, 'Fourteen two'),
@@ -475,16 +475,16 @@ describe('unknown and unverified data', () => {
     const guessed = {
       ...base,
       dependencies: base.dependencies.map((dep) =>
-        dep.name === 'typescript' ? { ...dep, range: '^4.8.4', source: 'range-minimum' as const } : dep,
+        dep.name === 'zone.js' ? { ...dep, range: '^0.11.8', source: 'range-minimum' as const } : dep,
       ),
     };
     const result16 = await buildPlan(guessed, memorySource(angularRecords()), { targetMajor: 16, nodeVersion: '18.19.0' }, GUIDE);
-    const typescript = result16.hops[0]!.requirements.find((r) => r.name === 'typescript')!;
-    expect(typescript).toMatchObject({ status: 'unmet', installed: { value: '4.8.4', confidence: 'unverified' } });
+    const zone = result16.hops[0]!.requirements.find((r) => r.name === 'zone.js')!;
+    expect(zone).toMatchObject({ status: 'unmet', installed: { value: '0.11.8', confidence: 'unverified' } });
     expect(result16.unverified).toContainEqual({
       hop: 16,
-      subject: 'installed typescript (@angular/compiler-cli@16.2.12 peerDependencies)',
-      reason: 'not resolved in a lockfile; lowest version allowed by "^4.8.4"',
+      subject: 'installed zone.js (@angular/core@16.2.12 peerDependencies)',
+      reason: 'not resolved in a lockfile; lowest version allowed by "^0.11.8"',
     });
     // Lockfile-confirmed tooling versions are not listed.
     expect(result16.unverified.map((item) => item.subject)).not.toContain('installed rxjs (@angular/core@16.2.12 peerDependencies)');
@@ -512,7 +512,7 @@ describe('unknown and unverified data', () => {
 });
 
 describe('framework requirements', () => {
-  it('flags TypeScript, zone.js and Node requirements that the installed versions do not meet', async () => {
+  it('flags RxJS and zone.js requirements that the installed versions do not meet; Node.js and TypeScript are in the toolchain', async () => {
     const source = memorySource(angularRecords());
     const app = project('15.2.10', [], { typescript: '4.8.4', 'zone.js': 'absent' });
     const result = await buildPlan(app, source, { targetMajor: 16, nodeVersion: 'v16.13.0' }, GUIDE);
@@ -525,14 +525,6 @@ describe('framework requirements', () => {
       flagged: r.flagged,
     }));
     expect(requirements).toEqual([
-      {
-        name: 'typescript',
-        requiredBy: '@angular/compiler-cli@16.2.12 peerDependencies',
-        range: '>=4.9.3 <5.2',
-        installed: '4.8.4',
-        status: 'unmet',
-        flagged: true,
-      },
       {
         name: 'rxjs',
         requiredBy: '@angular/core@16.2.12 peerDependencies',
@@ -549,32 +541,9 @@ describe('framework requirements', () => {
         status: 'not-installed',
         flagged: true,
       },
-      {
-        name: 'node',
-        requiredBy: '@angular/core@16.2.12 engines',
-        range: '^16.14.0 || >=18.10.0',
-        installed: '16.13.0',
-        status: 'unmet',
-        flagged: true,
-      },
-      {
-        name: 'node',
-        requiredBy: '@angular/cli@16.2.16 engines',
-        range: '^16.14.0 || >=18.10.0',
-        installed: '16.13.0',
-        status: 'unmet',
-        flagged: true,
-      },
     ]);
-    expect(result.hops[0]!.effort.counts.unmetRequirements).toBe(4);
-  });
-
-  it('leaves the Node requirement unknown when no Node version is given', async () => {
-    const result = await plan('15.2.10', [], [], { targetMajor: 16, nodeVersion: '18.19.0' });
-    expect(result.hops[0]!.requirements.filter((r) => r.name === 'node').map((r) => r.status)).toEqual(['met', 'met']);
-    const unknown = await plan('15.2.10', [], [], { targetMajor: 16, nodeVersion: null });
-    const node = unknown.hops[0]!.requirements.find((r) => r.name === 'node')!;
-    expect(node).toMatchObject({ status: 'unknown', flagged: false, installed: { value: null, confidence: 'unverified' } });
+    expect(result.hops[0]!.effort.counts.unmetRequirements).toBe(1);
+    expect(result.hops[0]!.toolchain.typescript.status).toBe('blocker');
   });
 });
 
@@ -638,42 +607,42 @@ describe('effort and determinism', () => {
   ];
   const extra = [dependency('ngx-steady', '1.0.0'), dependency('ngx-stuck', '3.0.0')];
 
-  it('scores each hop from steps, major bumps, unmet requirements and blockers', async () => {
+  it('scores each hop from steps, major bumps, unmet requirements, blockers and the toolchain', async () => {
     const result = await plan('14.2.12', libraries, extra, { nodeVersion: '18.19.0' });
     expect(result.hops.map((hop) => hop.effort)).toEqual([
       // 15: TypeScript 4.8.4 and zone.js 0.11.8 still fit.
       {
         points: 9,
         label: 'S',
-        counts: { steps: { basic: 1, medium: 1, advanced: 1 }, majorBumps: 1, unmetRequirements: 0, blockers: 0, removedApis: { migrated: 0, manual: 0 } },
-        breakdown: { base: 2, steps: 4, majorBumps: 3, requirements: 0, blockers: 0, removedApis: 0 },
+        counts: { steps: { basic: 1, medium: 1, advanced: 1 }, majorBumps: 1, unmetRequirements: 0, blockers: 0, toolchain: { nodeBlockers: 0, nodeWarnings: 0, typescriptBlockers: 0 }, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 4, majorBumps: 3, requirements: 0, blockers: 0, toolchain: 0, removedApis: 0 },
       },
-      // 16: TypeScript and zone.js are too old.
+      // 16: TypeScript (a toolchain blocker) and zone.js are too old; engines.node is missing, so Node.js adds nothing.
       {
         points: 6,
         label: 'S',
-        counts: { steps: { basic: 0, medium: 0, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 0, removedApis: { migrated: 0, manual: 0 } },
-        breakdown: { base: 2, steps: 0, majorBumps: 0, requirements: 4, blockers: 0, removedApis: 0 },
+        counts: { steps: { basic: 0, medium: 0, advanced: 0 }, majorBumps: 0, unmetRequirements: 1, blockers: 0, toolchain: { nodeBlockers: 0, nodeWarnings: 0, typescriptBlockers: 1 }, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 0, majorBumps: 0, requirements: 2, blockers: 0, toolchain: 2, removedApis: 0 },
       },
       // 17: the same, plus ngx-stuck becomes a blocker.
       {
         points: 15,
         label: 'S',
-        counts: { steps: { basic: 0, medium: 1, advanced: 0 }, majorBumps: 0, unmetRequirements: 2, blockers: 1, removedApis: { migrated: 0, manual: 0 } },
-        breakdown: { base: 2, steps: 1, majorBumps: 0, requirements: 4, blockers: 8, removedApis: 0 },
+        counts: { steps: { basic: 0, medium: 1, advanced: 0 }, majorBumps: 0, unmetRequirements: 1, blockers: 1, toolchain: { nodeBlockers: 0, nodeWarnings: 0, typescriptBlockers: 1 }, removedApis: { migrated: 0, manual: 0 } },
+        breakdown: { base: 2, steps: 1, majorBumps: 0, requirements: 2, blockers: 8, toolchain: 2, removedApis: 0 },
       },
     ]);
     expect(result.effort).toEqual({
       points: 30,
       label: 'S',
-      counts: { steps: { basic: 1, medium: 2, advanced: 1 }, majorBumps: 1, unmetRequirements: 4, blockers: 1, removedApis: { migrated: 0, manual: 0 } },
-      breakdown: { base: 6, steps: 5, majorBumps: 3, requirements: 8, blockers: 8, removedApis: 0 },
+      counts: { steps: { basic: 1, medium: 2, advanced: 1 }, majorBumps: 1, unmetRequirements: 2, blockers: 1, toolchain: { nodeBlockers: 0, nodeWarnings: 0, typescriptBlockers: 2 }, removedApis: { migrated: 0, manual: 0 } },
+      breakdown: { base: 6, steps: 5, majorBumps: 3, requirements: 4, blockers: 8, toolchain: 4, removedApis: 0 },
     });
   });
 
   it('maps points to S, M, L and XL labels', () => {
     const effortFor = (basic: number) =>
-      hopEffort({ steps: Array.from({ length: basic }, () => ({ level: 'basic' }) as PlanStep), libraries: [], requirements: [], removedApis: [] });
+      hopEffort({ steps: Array.from({ length: basic }, () => ({ level: 'basic' }) as PlanStep), libraries: [], requirements: [], toolchain: toolchain(), removedApis: [], rxjs: [] });
     // 2 base points plus 2 per basic step.
     expect([8, 9, 18, 19, 33, 34].map((n) => [effortFor(n).points, effortFor(n).label])).toEqual([
       [18, 'S'],

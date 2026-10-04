@@ -1,15 +1,37 @@
 // Single-file HTML report: inline CSS, no scripts and no external resources. A Content Security
 // Policy blocks scripts and remote loads as a second line of defence; every plan string is
 // escaped with escapeHtml and step text keeps only code spans, line breaks and https links.
-import type { Confidence, Fact, Hop, LibraryHopResult, RemovedApiFinding, Requirement, UpgradePlan } from '../plan/types.js';
+import type {
+  Confidence,
+  DeprecationFinding,
+  Fact,
+  Hop,
+  LibraryHopResult,
+  RemovedApiFinding,
+  Requirement,
+  RxjsFinding,
+  ToolchainCheck,
+  UpgradePlan,
+} from '../plan/types.js';
 import type { ReportMeta } from './markdown.js';
 import {
+  DEPRECATION_HELP,
+  TOOLCHAIN_HELP,
+  TOOLCHAIN_LABELS,
+  blockerCount,
+  enginesText,
+  localNodeText,
+  requirementWarningCount,
+  toolchainProjectLabel,
+  toolchainStatusText,
   LEVELS,
   LEVEL_TITLES,
   REMOVED_API_HELP,
+  RXJS_HELP,
   STATUS_HELP,
   UNVERIFIED_INTRO,
   confirmedStatements,
+  deprecationCountText,
   effortBreakdown,
   effortText,
   factValue,
@@ -23,6 +45,10 @@ import {
   removedApiCountText,
   removedApiEmptyText,
   requirementStatusText,
+  rxjsAdvisory,
+  rxjsAdvisoryText,
+  rxjsCountText,
+  rxjsRequiredText,
   scanNotes,
   scanStatusText,
   stepCountText,
@@ -137,6 +163,34 @@ function requirementBadge(requirement: Requirement): string {
   return badge(text, requirement.flagged ? 'bad' : 'warn');
 }
 
+function toolchainBadge(check: ToolchainCheck): string {
+  const tone = check.status === 'ok' ? 'ok' : check.status === 'blocker' ? 'bad' : 'warn';
+  return badge(toolchainStatusText(check), tone);
+}
+
+/** The status comes second and the reasons follow the table, so a narrow screen shows the status without scrolling. */
+function toolchainSection(plan: UpgradePlan, hop: Hop): string {
+  const checks = [hop.toolchain.node, hop.toolchain.typescript];
+  const rows = checks.map((check) => {
+    const range =
+      check.range.value === null ? factHtml(check.range) : `<code>${h(check.range.value)}</code>${unverifiedTag(check.range)}`;
+    const source = check.requiredBy.length > 0 ? `<div class="note">from ${check.requiredBy.map(h).join(', ')}</div>` : '';
+    return [
+      h(TOOLCHAIN_LABELS[check.name]),
+      toolchainBadge(check),
+      `${range}${source}`,
+      `${factHtml(check.project, 'none')}<div class="note">${h(toolchainProjectLabel(check))}</div>`,
+    ];
+  });
+  const reasons = checks.map((check) => `<li><strong>${h(TOOLCHAIN_LABELS[check.name])}</strong>: ${h(check.reason)}</li>`);
+  return [
+    `<h3 id="${hopAnchor(hop)}-toolchain">Toolchain</h3>`,
+    tableHtml(['Tool', 'Status', 'Required range', 'Project'], rows, `Node.js and TypeScript for the hop to Angular ${hop.to}`),
+    `<ul class="plain">${reasons.join('')}</ul>`,
+    `<p class="note">Local Node.js: ${h(localNodeText(plan))}. ${h(TOOLCHAIN_HELP)}</p>`,
+  ].join('\n');
+}
+
 function peerCell(library: LibraryHopResult): string {
   const { version, peers } = peerEvidence(library);
   if (peers.length === 0) return 'none';
@@ -178,12 +232,70 @@ function removedApiSection(plan: UpgradePlan, hop: Hop): string {
   return out.join('\n');
 }
 
+function deprecationRow(finding: DeprecationFinding): string[] {
+  const confidence =
+    finding.confidence === 'heuristic' ? `${badge('heuristic', 'warn')} <span class="tag">unverified</span>` : badge('confirmed', 'ok');
+  return [
+    `<code>${h(findingLocation(finding))}</code>`,
+    `<code>${h(finding.api)}</code><div class="note">${h(finding.package)}, deprecated in Angular ${finding.deprecatedIn}</div>`,
+    badge(`Angular ${finding.removalMajor}`, 'warn'),
+    h(finding.replacement),
+    confidence,
+  ];
+}
+
+/** Listed only when the hop has deprecation warnings; they are not blockers. */
+function deprecationSection(hop: Hop): string {
+  if (hop.deprecations.length === 0) return '';
+  return [
+    `<h3 id="${hopAnchor(hop)}-deprecations">Deprecation warnings</h3>`,
+    `<p>${h(deprecationCountText(hop))}. <span class="note">${h(DEPRECATION_HELP)}</span></p>`,
+    tableHtml(
+      ['Location', 'API', 'Removal announced for', 'Replacement', 'Confidence'],
+      hop.deprecations.map(deprecationRow),
+      `Deprecated APIs to replace before Angular ${hop.to + 1}; not blockers of the hop to Angular ${hop.to}`,
+    ),
+  ].join('\n');
+}
+
+function rxjsRow(finding: RxjsFinding): string[] {
+  return [
+    `<code>${h(findingLocation(finding))}</code>`,
+    `<code>${h(finding.api)}</code><div class="note">${h(finding.package)}, ${h(finding.change)}</div>`,
+    h(finding.replacement),
+  ];
+}
+
+/** Listed only in the hop that forces RxJS 7, where the findings are required work. */
+function rxjsSection(plan: UpgradePlan, hop: Hop): string {
+  if (hop.rxjs.length === 0) return '';
+  return [
+    `<h3 id="${hopAnchor(hop)}-rxjs">RxJS 7 breaking changes</h3>`,
+    `<p>${h(rxjsCountText(hop.rxjs))}. ${h(rxjsRequiredText(plan, hop))} <span class="note">${h(RXJS_HELP)}</span></p>`,
+    tableHtml(['Location', 'API', 'Replacement'], hop.rxjs.map(rxjsRow), `RxJS 7 breaking changes to fix in the hop to Angular ${hop.to}`),
+  ].join('\n');
+}
+
+/** Listed once, before the hops, when no hop of the plan forces RxJS 7. */
+function rxjsAdvisorySection(plan: UpgradePlan): string {
+  const advisory = rxjsAdvisory(plan);
+  if (advisory.length === 0) return '';
+  return [
+    '<section id="rxjs-advisory" aria-labelledby="rxjs-advisory-title">',
+    '<h2 id="rxjs-advisory-title">RxJS 7 advisory</h2>',
+    `<p class="callout">${h(rxjsCountText(advisory))}. ${h(rxjsAdvisoryText(plan))}</p>`,
+    `<p class="note">${h(RXJS_HELP)}</p>`,
+    tableHtml(['Location', 'API', 'Replacement'], advisory.map(rxjsRow), 'RxJS 7 breaking changes; advisory, not part of any hop'),
+    '</section>',
+  ].join('\n');
+}
+
 function hopSection(plan: UpgradePlan, hop: Hop, index: number): string {
   const view = hopView(hop);
   const out: string[] = [`<section id="${hopAnchor(hop)}" aria-labelledby="${hopAnchor(hop)}-title">`];
   out.push(`<h2 id="${hopAnchor(hop)}-title">Hop ${index + 1}: ${h(hopTitle(hop))}</h2>`);
   out.push(
-    `<p class="hop-meta"><span>Target release: ${factHtml(hop.angular)}</span><span>Effort: ${badge(effortText(hop.effort), hop.effort.label === 'S' ? 'ok' : hop.effort.label === 'M' ? 'info' : 'warn')}</span><span>${view.blockers.length} blocker${view.blockers.length === 1 ? '' : 's'}</span></p>`,
+    `<p class="hop-meta"><span>Target release: ${factHtml(hop.angular)}</span><span>Effort: ${badge(effortText(hop.effort), hop.effort.label === 'S' ? 'ok' : hop.effort.label === 'M' ? 'info' : 'warn')}</span><span>${blockerCount(view)} blocker${blockerCount(view) === 1 ? '' : 's'}</span></p>`,
   );
 
   out.push('<h3>Update command</h3>');
@@ -225,13 +337,21 @@ function hopSection(plan: UpgradePlan, hop: Hop, index: number): string {
   }
 
   out.push('<h3>Blockers</h3>');
-  if (view.blockers.length === 0) out.push('<p>None.</p>');
-  else out.push(`<ul class="plain">${view.blockers.map((library) => `<li><code>${h(library.name)}</code>: ${h(library.reason)}</li>`).join('')}</ul>`);
+  if (blockerCount(view) === 0) out.push('<p>None.</p>');
+  else {
+    const items = [
+      ...view.blockers.map((library) => `<li><code>${h(library.name)}</code>: ${h(library.reason)}</li>`),
+      ...view.toolchainBlockers.map((check) => `<li>${h(TOOLCHAIN_LABELS[check.name])} <span class="note">(toolchain)</span>: ${h(check.reason)}</li>`),
+    ];
+    out.push(`<ul class="plain">${items.join('')}</ul>`);
+  }
 
   if (view.unknown.length > 0) {
     out.push('<h3>Could not be decided</h3>');
     out.push(`<ul class="plain">${view.unknown.map((library) => `<li><code>${h(library.name)}</code>: ${h(library.reason)}</li>`).join('')}</ul>`);
   }
+
+  out.push(toolchainSection(plan, hop));
 
   out.push('<h3>Framework requirements</h3>');
   if (hop.requirements.length === 0) {
@@ -250,6 +370,10 @@ function hopSection(plan: UpgradePlan, hop: Hop, index: number): string {
   }
 
   out.push(removedApiSection(plan, hop));
+  const deprecations = deprecationSection(hop);
+  if (deprecations !== '') out.push(deprecations);
+  const rxjs = rxjsSection(plan, hop);
+  if (rxjs !== '') out.push(rxjs);
 
   out.push('<h3>Effort</h3>');
   out.push(`<p>${h(effortText(hop.effort))}: ${h(effortBreakdown(hop.effort))}.</p>`);
@@ -272,6 +396,8 @@ export function renderHtml(plan: UpgradePlan, meta: ReportMeta): string {
     ['Total effort', plan.hops.length > 0 ? h(effortText(plan.effort)) : 'none'],
     ['Lockfile', lockfile !== null ? `${h(lockfile.file)} <span class="note">${h(lockfile.kind)}</span>` : 'none'],
     ['Source scan', h(scanStatusText(plan))],
+    ['engines.node', h(enginesText(plan))],
+    ['Local Node.js', `${h(plan.toolchain.localNode.value ?? 'not known')} <span class="note">context only</span>`],
   ];
   body.push(`<dl class="facts">${facts.map(([label, value]) => `<div><dt>${h(label)}</dt><dd>${value}</dd></div>`).join('')}</dl>`);
   body.push('</header>');
@@ -290,23 +416,26 @@ export function renderHtml(plan: UpgradePlan, meta: ReportMeta): string {
         `<a class="nowrap" href="#${hopAnchor(hop)}">${index + 1}. ${h(hopTitle(hop))}</a>`,
         String(hop.steps.length),
         String(view.updates.length),
-        view.blockers.length > 0 ? badge(String(view.blockers.length), 'bad') : '0',
+        blockerCount(view) > 0 ? badge(String(blockerCount(view)), 'bad') : '0',
         String(view.unknown.length),
-        String(view.warnings.length),
+        String(requirementWarningCount(view)),
         String(hop.removedApis.length),
+        hop.deprecations.length > 0 ? badge(String(hop.deprecations.length), 'warn') : '0',
         h(effortText(hop.effort)),
       ];
     });
     body.push(
       tableHtml(
-        ['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Effort'],
+        ['Hop', 'Steps', 'Library updates', 'Blockers', 'Unknown', 'Requirement warnings', 'Removed APIs', 'Deprecation warnings', 'Effort'],
         rows,
         'Work per hop',
-        [1, 2, 3, 4, 5, 6],
+        [1, 2, 3, 4, 5, 6, 7],
       ),
     );
     body.push(`<p class="note">${h(STATUS_HELP)}</p>`);
     body.push(`<p class="note">${[...scanNotes(plan), ...(plan.scan.status === 'ran' ? [REMOVED_API_HELP] : [])].map(h).join(' ')}</p>`);
+    const advisory = rxjsAdvisorySection(plan);
+    if (advisory !== '') body.push(advisory);
     plan.hops.forEach((hop, index) => body.push(hopSection(plan, hop, index)));
   }
 

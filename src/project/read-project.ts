@@ -11,6 +11,7 @@ import { packageNameProblem } from './package-name.js';
 import type {
   DependencyKind,
   LockfileInfo,
+  NodeEngine,
   PackageManagerName,
   ProjectDependency,
   ProjectInfo,
@@ -140,6 +141,29 @@ function rangeMinimum(range: string): string | undefined {
   }
 }
 
+/** Reads `engines.node`; a missing or invalid value is reported as a project warning. */
+function readNodeEngine(pkg: PlainObject, warnings: ProjectWarning[]): NodeEngine {
+  const engines = own(pkg, 'engines');
+  const node = isPlainObject(engines) ? own(engines, 'node') : undefined;
+  if (node === undefined || node === null) {
+    warnings.push({
+      code: 'engines-node-missing',
+      message:
+        'package.json has no engines.node, so the Node.js versions the project runs on are not known and the Node.js requirement of each hop cannot be checked.',
+    });
+    return { status: 'missing', range: null };
+  }
+  if (typeof node === 'string' && node.trim() !== '' && semver.validRange(node) !== null) {
+    return { status: 'declared', range: node };
+  }
+  const text = typeof node === 'string' ? node : null;
+  warnings.push({
+    code: 'engines-node-invalid',
+    message: `engines.node ${text !== null ? quote(text) : 'in package.json'} is not a valid version range, so the Node.js requirement of each hop cannot be checked.`,
+  });
+  return { status: 'invalid', range: text };
+}
+
 function readDependencies(
   pkg: PlainObject,
   packageJsonPath: string,
@@ -252,6 +276,7 @@ export async function readProject(dir: string): Promise<ProjectInfo> {
   }
 
   const dependencies = readDependencies(pkg, packageJsonPath, lockfile, candidate?.file, warnings);
+  const nodeEngine = readNodeEngine(pkg, warnings);
   const core = dependencies.find((dependency) => dependency.name === '@angular/core');
   if (!core) {
     const angularJs = dependencies.some((dependency) => dependency.name === 'angular');
@@ -277,6 +302,7 @@ export async function readProject(dir: string): Promise<ProjectInfo> {
     name: typeof name === 'string' ? name : null,
     packageManager: typeof packageManagerField === 'string' ? packageManagerField : null,
     lockfile: lockfileInfo,
+    nodeEngine,
     angular: { range: core.range, version: core.version, source: core.source },
     dependencies,
     warnings,

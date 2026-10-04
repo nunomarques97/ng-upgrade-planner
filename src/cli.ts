@@ -5,12 +5,15 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { CLI_NAME, CLI_OPTIONS } from './cli-options.js';
+import { DEPRECATED_APIS, deprecationCoverage } from './data/deprecated-apis.js';
 import { REMOVED_APIS } from './data/removed-apis.js';
+import { RXJS_APIS } from './data/rxjs-apis.js';
 import { isPlanError, buildPlan, type PlanScanInput } from './plan/index.js';
 import { describeCause, isProjectError } from './project/errors.js';
 import { readProject } from './project/index.js';
 import { DEFAULT_REGISTRY, RegistryClient, RegistryConfigError, defaultCacheDir } from './registry/index.js';
 import { cleanText, renderJson, renderTerminal, shouldUseColor, writeReports } from './report/index.js';
+import { PLAN_JSON_SCHEMA_VERSION } from './report/json.js';
 import { scan } from './scan/index.js';
 
 const NAME = CLI_NAME;
@@ -31,7 +34,7 @@ Options:
   --out-dir <dir>    Folder for ng-upgrade-plan.md, .html and .json (default: the project folder)
   --no-report        Write no report files
   --no-scan          Do not scan the project source for removed or changed Angular APIs
-  --json             Print the plan as JSON (schema version 1) instead of the summary
+  --json             Print the plan as JSON (schema version ${PLAN_JSON_SCHEMA_VERSION}) instead of the summary
   -h, --help         Show this help
   -v, --version      Show the version
 
@@ -161,13 +164,19 @@ async function run(argv: string[]): Promise<number> {
   let scanInput: PlanScanInput | null = null;
   if (options.scan) {
     try {
-      scanInput = { result: await scan(options.cwd, REMOVED_APIS), coverage: REMOVED_APIS };
+      scanInput = {
+        result: await scan(options.cwd, REMOVED_APIS, { deprecations: DEPRECATED_APIS, rxjs: RXJS_APIS }),
+        coverage: REMOVED_APIS,
+        deprecations: deprecationCoverage(DEPRECATED_APIS),
+        rxjs: { rxjsMajor: RXJS_APIS.rxjsMajor, retrieved: RXJS_APIS.retrieved },
+      };
     } catch (error) {
       throw new FileError(`Could not scan the project source in ${options.cwd}: ${describeCause(error)}`);
     }
   }
   const plan = await buildPlan(project, client, {
     ...(options.to !== undefined ? { targetMajor: options.to } : {}),
+    // Context only: the Node.js status of each hop comes from the project's engines.node.
     nodeVersion: process.version,
     scan: scanInput,
   });

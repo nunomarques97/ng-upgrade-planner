@@ -4,6 +4,65 @@ All notable changes to this project are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - unreleased
+
+### Added
+
+- Deprecation warnings: 11 APIs deprecated with an announced removal major, such as the `@angular/animations`
+  package, `provideAnimationsAsync()` and `Component.animations` (deprecated in 20.2, removed in 23) and
+  `withIncrementalHydration` (removed in 24). Each cites the `@deprecated` notice that names the removal major. A
+  warning appears in the hop before the removal; it does not block and adds no effort points. Every report has a
+  deprecation column or list.
+- Angular Material and CDK: 185 removed or breaking APIs of `@angular/material`, `@angular/cdk` and their entry
+  points for majors 9 to 22, such as the `legacy-*` entry points (17), the mixin helpers (19) and `MatCommonModule`
+  (21). Each cites the angular/components CHANGELOG and was checked against the public API of the last release
+  that exported it. The bundled scan data now holds 289 entries.
+- RxJS 6 to 7: 4 breaking changes a source scan can find (the `rxjs/Rx` import, `VirtualTimeScheduler.sortActions`,
+  `defaultIfEmpty()` without a value and `iif()` without both results), each citing the RxJS breaking-changes
+  document. Files that import `rxjs` without `@angular/*` are scanned too. The findings are shown only while the
+  installed rxjs is 6.x: as work in the first hop whose `@angular/core` no longer accepts RxJS 6, or else once as
+  a non-blocking advisory. No Angular release up to 22 requires RxJS 7, so today they are an advisory.
+- Node.js and TypeScript per hop: each hop states the Node.js range of its Angular release (the `engines` of
+  `@angular/core` and `@angular/cli`) and its TypeScript range (the `@angular/compiler-cli` peer). The project's
+  `engines.node` is a blocker when it allows no version in the range, a warning when it also allows versions
+  outside it, and unverified when it is missing or invalid. The lockfile's TypeScript is a blocker when it is
+  outside the range. The local Node.js version is shown as context and decides nothing. Effort: 8 points per
+  Node.js blocker, 2 per Node.js warning and 2 per TypeScript blocker.
+- Scan precision measured on 11 open-source Angular apps (Angular 9 to 19; npm, pnpm and yarn) at pinned commits:
+  105 findings, all true positives after reading each line. Recall is not measured. The labels and numbers per
+  rule family and per app are in `docs/verification/scan-precision.md`; the README quotes them, and a test keeps
+  the two in step.
+- Data audit: every removed-API entry carries an audit status (confirmed, corrected, removed, unverified or
+  added); a test fails on an entry without one. The 105 entries of 0.2.0 were read again against their official
+  sources: 95 confirmed, 8 corrected and 2 removed. The entries added in 0.3.0 were written from their sources
+  and have status added; they were not read again separately. Details in `docs/verification/data-audit.md`.
+
+### Changed
+
+- JSON plan: `schemaVersion` is now `2`. Differences from version 1, documented in
+  `skills/angular-upgrade-hops/references/plan-json.md`:
+  - new `hops[].deprecations` and `scan.deprecations` for the deprecation warnings;
+  - new `hops[].rxjs` and `scan.rxjs` for the RxJS 7 changes; `hops[].effort.breakdown.removedApis` also counts
+    `hops[].rxjs`;
+  - new `hops[].toolchain`, `toolchain` and `hops[].effort.breakdown.toolchain` for the Node.js and TypeScript
+    checks;
+  - `hops[].requirementWarnings` holds only `"rxjs"` and `"zone.js"`; `"node"` (checked against the local Node.js
+    in version 1) and `"typescript"` moved to `hops[].toolchain`.
+
+  Every other field keeps its name, type and meaning. A consumer written for version 1 must stop on version 2.
+- The local Node.js version no longer counts as an unmet requirement, so plans of projects without
+  `engines.node` lose the 2 points it added to a hop.
+- Removed-API data corrections from the audit: the `migration` value of `ignoreChangesOutsideZone`,
+  `getAngularLib`, `setAngularLib` and `fullTemplateTypeCheck` (21 and 22) is now "no" instead of "unknown", and
+  four v12 i18n entries have corrected migration notes. `NgModuleFactory` and `HttpXhrBackend` were removed from
+  the data, because both are still exported in Angular 22; the `ngModuleFactory` input of `NgComponentOutlet`
+  (removed in 21) was added in their place.
+- Agent Skill `angular-upgrade-hops`, from a run on a real Angular 19 app: it requires JSON schema version 2;
+  installs from the lockfile and runs a baseline build and test before the first hop; runs `ng` only through the
+  installed CLI (`npx --no-install ng` with npm); moves all of a hop's libraries in one install, because moving
+  them one at a time can fail on peer conflicts; runs Karma tests once, headless; stops on a Node.js blocker; and
+  after `ng update` installs a TypeScript inside the hop's range only if `ng update` did not move it there.
+
 ## [0.2.0] - 2026-10-03
 
 ### Added

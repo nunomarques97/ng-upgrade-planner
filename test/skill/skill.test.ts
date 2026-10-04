@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { CLI_NAME, CLI_OPTIONS } from '../../src/cli-options.js';
 import type { UpgradePlan } from '../../src/plan/types.js';
-import { planJson } from '../../src/report/json.js';
+import { PLAN_JSON_SCHEMA_VERSION, planJson } from '../../src/report/json.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const skillsDir = path.join(root, 'skills');
@@ -162,11 +162,18 @@ function producedDocuments(): { label: string; document: unknown }[] {
     scan: { ...sample.scan, status: 'off', coverage: null, filesScanned: 0, findings: 0, attached: 0, unscanned: [] },
   };
   const nothingToPlan: UpgradePlan = { ...sample, hops: [], message: 'Already on Angular 17.' };
+  // The sample's RxJS findings as required work in the hop to 16, as when that hop accepts no RxJS 6.
+  const rxjsForced: UpgradePlan = {
+    ...sample,
+    hops: sample.hops.map((hop) => (hop.to === 16 ? { ...hop, rxjs: sample.scan.rxjs.advisory } : hop)),
+    scan: { ...sample.scan, rxjs: { ...sample.scan.rxjs, status: 'required', forcedBy: 16, advisory: [] } },
+  };
   const fixtures = path.join(root, 'test', '__snapshots__', 'fixtures');
   return [
     { label: 'sample plan', document: planJson(sample, { toolVersion: '0.1.0' }) },
     { label: 'sample plan, scan off', document: planJson(scanOff, { toolVersion: '0.1.0' }) },
     { label: 'nothing to plan', document: planJson(nothingToPlan, { toolVersion: '0.1.0' }) },
+    { label: 'sample plan, RxJS 7 forced', document: planJson(rxjsForced, { toolVersion: '0.1.0' }) },
     ...readdirSync(fixtures)
       .filter((file) => file.endsWith('.ng-upgrade-plan.json'))
       .map((file) => ({ label: file, document: JSON.parse(read(path.join(fixtures, file))) as unknown })),
@@ -233,6 +240,91 @@ describe('Agent Skill', () => {
     ]) {
       expect(text).toMatch(rule);
     }
+  });
+
+  it('accepts only the documented schema version and treats deprecation warnings as notes, not stops', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    expect(text).toContain(`If \`schemaVersion\` is not \`${PLAN_JSON_SCHEMA_VERSION}\`, stop`);
+    expect(read(SCHEMA_DOC)).toMatch(new RegExp(`^# ng-upgrade-planner JSON plan, schema version ${PLAN_JSON_SCHEMA_VERSION}$`, 'm'));
+    expect(text).toMatch(/Note the deprecation warnings/);
+    expect(text).toMatch(/notes to report, not stop conditions/);
+    const stops = text.slice(text.indexOf('## When to stop'), text.indexOf('## Report'));
+    expect(stops).not.toMatch(/deprecation/i);
+  });
+
+  it('fixes RxJS 7 breaking changes only in the hop that forces RxJS 7 and reports the advisory ones', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    expect(text).toMatch(/Fix the RxJS 7 breaking changes/);
+    expect(text).toMatch(/`rxjs` has entries only in the hop whose Angular version accepts no\s+RxJS 6/);
+    expect(text).toMatch(/If `scan\.rxjs\.status` is `advisory`/);
+    expect(text).toMatch(/notes, not work for any hop/);
+    const stops = text.slice(text.indexOf('## When to stop'), text.indexOf('## Report'));
+    expect(stops).not.toMatch(/rxjs/i);
+    const report = text.slice(text.indexOf('## Report'));
+    expect(report).toContain('scan.rxjs.advisory');
+  });
+
+  it('stops on a Node.js blocker and resolves a TypeScript blocker by installing a TypeScript in range after ng update, then building', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    const stops = text.slice(text.indexOf('## When to stop'), text.indexOf('## Report'));
+    expect(stops).toMatch(/`toolchain\.node\.blocker` is true/);
+    expect(stops).toMatch(/`node --version` is outside `toolchain\.node\.range`/);
+    // A TypeScript blocker is work for the hop, not a stop condition, and Node.js is never a requirement warning.
+    expect(stops).not.toMatch(/typescript/i);
+    expect(text).not.toMatch(/requirementWarnings` other than `node`/);
+    const steps = text.slice(text.indexOf('## 3. Execute one hop'), text.indexOf('## 4. Before the next hop'));
+    const commands = steps.indexOf('**Run the official commands.**');
+    const typescript = steps.indexOf('**Resolve the TypeScript blocker');
+    const build = steps.indexOf('**Build and test.**');
+    expect(commands).toBeGreaterThan(0);
+    expect(typescript).toBeGreaterThan(commands);
+    expect(build).toBeGreaterThan(typescript);
+    const step = steps.slice(typescript, steps.indexOf('6. **Fix the removed APIs.**'));
+    expect(step).toMatch(/If `toolchain\.typescript\.blocker`\s+is true/);
+    expect(step).toMatch(/install a TypeScript inside that range/);
+    expect(step).toMatch(/now that\s+`ng update` has run/);
+    expect(step).toMatch(/The build in step 9 then checks the\s+project with it/);
+    // The local Node.js version is checked by the agent, but the plan's Node.js status comes from engines.node.
+    expect(steps).toMatch(/comes from the project's `engines\.node`, not from your Node\.js/);
+  });
+
+  // Points where the end-to-end run (docs/verification/skill-e2e.md) found the skill misleading.
+  it('installs from the lockfile and checks a baseline build and test run before the first hop', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    const start = text.slice(text.indexOf('## 1. Check the starting point'), text.indexOf('## 2. Make the plan'));
+    const code = codeTexts(start);
+    for (const install of ['npm ci', 'pnpm install --frozen-lockfile', 'yarn install --frozen-lockfile', 'yarn install --immutable']) {
+      expect(code).toContain(install);
+    }
+    expect(code).toContain('ng test --watch=false --browsers=ChromeHeadless');
+    expect(start).toMatch(/Build and run the tests once, before any change\. If either fails, stop and report/);
+    const stops = text.slice(text.indexOf('## When to stop'), text.indexOf('## Report'));
+    expect(stops).toMatch(/the build or the tests fail before the first change/);
+  });
+
+  it('runs ng only through the locally installed Angular CLI, never a downloaded "ng" package', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    const code = codeTexts(text).map((line) => line.trim().split(/\s+/));
+    const npx = code.filter((words) => words[0] === 'npx' && words.includes('ng'));
+    expect(npx.length).toBeGreaterThan(0);
+    for (const words of npx) expect(words.slice(0, 3), words.join(' ')).toEqual(['npx', '--no-install', 'ng']);
+    const step = text.slice(text.indexOf('**Run the official commands.**'), text.indexOf('**Follow the official steps.**'));
+    expect(step).toContain('`pnpm exec ng update ...`');
+    expect(step).toContain('`yarn ng update ...`');
+  });
+
+  it('moves all of a hop\'s libraries in one install command', () => {
+    const text = read(path.join(skillDir, 'SKILL.md'));
+    const step = text.slice(text.indexOf('**Move the libraries.**'), text.indexOf('**Resolve the TypeScript blocker'));
+    expect(step).toMatch(/every such package in one command/);
+    expect(step).toMatch(/Installed one at a time, npm rejects each with a peer dependency conflict \(ERESOLVE\)/);
+    const installs = codeTexts(step).filter((line) => line.startsWith('npm install '));
+    expect(installs.length).toBe(1);
+    const packages = installs[0]!.split(/\s+/).slice(2);
+    expect(packages.length).toBeGreaterThan(1);
+    for (const spec of packages) expect(spec).toMatch(/^(@[a-z0-9-]+\/)?[a-z0-9.-]+@\d+\.\d+\.\d+$/);
+    const typescript = text.slice(text.indexOf('**Resolve the TypeScript blocker'), text.indexOf('6. **Fix the removed APIs.**'));
+    expect(typescript).toMatch(/`ng update` often moves it\s+into the range itself\. If it is still outside/);
   });
 
   it('runs the planner with --json and links the schema reference', () => {

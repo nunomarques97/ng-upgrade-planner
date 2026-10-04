@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REMOVED_APIS } from '../../src/data/removed-apis.js';
 import { scan, type ScanResult } from '../../src/scan/index.js';
-import { copySyntheticProject, removeFolder } from './helpers.js';
+import { brief, copySyntheticProject, removeFolder, tempFolder, writeFiles } from './helpers.js';
 
 let root: string;
 let result: ScanResult;
@@ -102,6 +102,41 @@ describe('scan with the bundled removed-API data', () => {
     expect(unexpected.map((finding) => `${finding.line}:${finding.column} ${finding.entryId}`)).toEqual([
       '14:51 v13-build-angular-extract-css',
     ]);
+  });
+
+  it('finds the NgComponentOutlet ngModuleFactory input and not the symbols the data audit removed', async () => {
+    const project = tempFolder('ngup-scan-audit-');
+    try {
+      writeFiles(project, {
+        'src/app/inline.component.ts': [
+          "import { Component, NgModuleFactory } from '@angular/core';",
+          "import { HttpXhrBackend } from '@angular/common/http';",
+          '@Component({',
+          "  selector: 'app-inline',",
+          '  template: `<ng-container *ngComponentOutlet="comp; ngModuleFactory: factory"></ng-container>`,',
+          '})',
+          'export class InlineComponent {',
+          '  factory?: NgModuleFactory<unknown>;',
+          '  backend?: HttpXhrBackend;',
+          '}',
+          '',
+        ].join('\n'),
+        'src/app/external.component.ts':
+          "import { Component } from '@angular/core';\n@Component({ templateUrl: './external.component.html' })\nexport class ExternalComponent {}\n",
+        'src/app/external.component.html': [
+          '<ng-container *ngComponentOutlet="comp; ngModule: module"></ng-container>',
+          '<ng-container [ngComponentOutlet]="comp" [ngComponentOutletNgModuleFactory]="factory"></ng-container>',
+          '',
+        ].join('\n'),
+      });
+      const audited = await scan(project, REMOVED_APIS);
+      expect(audited.findings.map(brief)).toEqual([
+        'src/app/external.component.html:2:43 v21-common-ng-component-outlet-ng-module-factory heuristic',
+        'src/app/inline.component.ts:5:28 v21-common-ng-component-outlet-ng-module-factory heuristic',
+      ]);
+    } finally {
+      removeFolder(project);
+    }
   });
 
   it('reports nothing in the files that must stay clean', () => {

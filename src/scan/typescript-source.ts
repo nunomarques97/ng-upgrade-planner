@@ -177,7 +177,7 @@ export function scanTypeScript(text: string, matchers: Matchers): TypeScriptScan
         const name = propertyName(property);
         if (name === null || property.type === 'SpreadElement') continue;
         for (const entry of entries) {
-          if (entry.kind === 'symbol' && entry.key === name) matches.push({ entry, offset: offsetOf(property.key) });
+          if (entry.kind === 'symbol' && 'key' in entry && entry.key === name) matches.push({ entry, offset: offsetOf(property.key) });
         }
       }
     }
@@ -219,7 +219,16 @@ export function scanTypeScript(text: string, matchers: Matchers): TypeScriptScan
     }
     const target = resolve(callee);
     if (target) {
-      keyedProperties(call, lookup(matchers.callKey, symbolKey(target.packageName, target.symbol)));
+      const key = symbolKey(target.packageName, target.symbol);
+      keyedProperties(call, lookup(matchers.callKey, key));
+      // A spread argument hides the argument count, so such a call is never matched.
+      if (!call.arguments.some((argument) => argument.type === 'SpreadElement')) {
+        for (const entry of lookup(matchers.fewerArguments, key)) {
+          if ('minArguments' in entry && entry.minArguments !== undefined && call.arguments.length < entry.minArguments) {
+            matches.push({ entry, offset: offsetOf(callee) });
+          }
+        }
+      }
       if (target.packageName === '@angular/core' && target.symbol === 'Component') componentMetadata(call);
     }
     if (isMember(callee)) {

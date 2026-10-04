@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "project": {
     "name": "ng-matero",
     "packageManager": null,
@@ -7,7 +7,9 @@
       "file": "package-lock.json",
       "kind": "npm"
     },
-    "warnings": []
+    "warnings": [
+      "package.json has no engines.node, so the Node.js versions the project runs on are not known and the Node.js requirement of each hop cannot be checked."
+    ]
   },
   "current": {
     "angular": {
@@ -17,6 +19,21 @@
       "note": null
     },
     "major": 13
+  },
+  "toolchain": {
+    "engines": {
+      "value": null,
+      "confidence": "unverified",
+      "source": "none",
+      "note": "package.json has no engines.node"
+    },
+    "enginesStatus": "missing",
+    "localNode": {
+      "value": "20.19.0",
+      "confidence": "confirmed",
+      "source": "option",
+      "note": null
+    }
   },
   "target": {
     "major": 22,
@@ -274,25 +291,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@14.3.0 peerDependencies",
-          "range": {
-            "value": ">=4.6.2 <4.9",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@14.3.0 peerDependencies",
           "range": {
@@ -329,46 +327,51 @@
           "optional": false,
           "status": "met",
           "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@14.3.0 engines",
-          "range": {
-            "value": "^14.15.0 || >=16.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@14.2.13 engines",
-          "range": {
-            "value": "^14.15.0 || >=16.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^14.15.0 || >=16.10.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@14.3.0 engines",
+            "@angular/cli@14.2.13 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^14.15.0 || >=16.10.0\" of Angular 14 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=4.6.2 <4.9",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@14.3.0 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "ok",
+          "reason": "typescript 4.6.4 from the lockfile is inside \">=4.6.2 <4.9\""
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -1203,6 +1206,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 54,
         "label": "L",
@@ -1215,6 +1220,11 @@
           "majorBumps": 4,
           "unmetRequirements": 0,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 0
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -1226,6 +1236,7 @@
           "majorBumps": 12,
           "requirements": 0,
           "blockers": 8,
+          "toolchain": 0,
           "removedApis": 0
         }
       }
@@ -1418,25 +1429,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@15.2.10 peerDependencies",
-          "range": {
-            "value": ">=4.8.2 <5.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@15.2.10 peerDependencies",
           "range": {
@@ -1473,46 +1465,51 @@
           "optional": false,
           "status": "met",
           "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@15.2.10 engines",
-          "range": {
-            "value": "^14.20.0 || ^16.13.0 || >=18.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@15.2.11 engines",
-          "range": {
-            "value": "^14.20.0 || ^16.13.0 || >=18.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^14.20.0 || ^16.13.0 || >=18.10.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@15.2.10 engines",
+            "@angular/cli@15.2.11 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^14.20.0 || ^16.13.0 || >=18.10.0\" of Angular 15 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=4.8.2 <5.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@15.2.10 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=4.8.2 <5.0\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -2347,6 +2344,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 56,
         "label": "L",
@@ -2357,8 +2356,13 @@
             "advanced": 2
           },
           "majorBumps": 4,
-          "unmetRequirements": 1,
+          "unmetRequirements": 0,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -2368,8 +2372,9 @@
           "base": 2,
           "steps": 32,
           "majorBumps": 12,
-          "requirements": 2,
+          "requirements": 0,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -2642,25 +2647,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@16.2.12 peerDependencies",
-          "range": {
-            "value": ">=4.9.3 <5.2",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@16.2.12 peerDependencies",
           "range": {
@@ -2697,46 +2683,51 @@
           "optional": false,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@16.2.12 engines",
-          "range": {
-            "value": "^16.14.0 || >=18.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@16.2.16 engines",
-          "range": {
-            "value": "^16.14.0 || >=18.10.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^16.14.0 || >=18.10.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@16.2.12 engines",
+            "@angular/cli@16.2.16 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^16.14.0 || >=18.10.0\" of Angular 16 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=4.9.3 <5.2",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@16.2.12 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=4.9.3 <5.2\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -3585,6 +3576,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 66,
         "label": "L",
@@ -3595,8 +3588,13 @@
             "advanced": 12
           },
           "majorBumps": 4,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -3606,8 +3604,9 @@
           "base": 2,
           "steps": 40,
           "majorBumps": 12,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -3760,25 +3759,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@17.3.12 peerDependencies",
-          "range": {
-            "value": ">=5.2 <5.5",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@17.3.12 peerDependencies",
           "range": {
@@ -3815,46 +3795,51 @@
           "optional": false,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@17.3.12 engines",
-          "range": {
-            "value": "^18.13.0 || >=20.9.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@17.3.17 engines",
-          "range": {
-            "value": "^18.13.0 || >=20.9.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^18.13.0 || >=20.9.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@17.3.12 engines",
+            "@angular/cli@17.3.17 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.13.0 || >=20.9.0\" of Angular 17 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=5.2 <5.5",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@17.3.12 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=5.2 <5.5\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -4703,6 +4688,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 50,
         "label": "L",
@@ -4713,8 +4700,13 @@
             "advanced": 3
           },
           "majorBumps": 4,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -4724,8 +4716,9 @@
           "base": 2,
           "steps": 24,
           "majorBumps": 12,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -4950,25 +4943,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@18.2.14 peerDependencies",
-          "range": {
-            "value": ">=5.4 <5.6",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@18.2.14 peerDependencies",
           "range": {
@@ -5005,46 +4979,51 @@
           "optional": false,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@18.2.14 engines",
-          "range": {
-            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@18.2.21 engines",
-          "range": {
-            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@18.2.14 engines",
+            "@angular/cli@18.2.21 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 18 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=5.4 <5.6",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@18.2.14 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=5.4 <5.6\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -5885,6 +5864,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 55,
         "label": "L",
@@ -5895,8 +5876,13 @@
             "advanced": 13
           },
           "majorBumps": 4,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -5906,8 +5892,9 @@
           "base": 2,
           "steps": 29,
           "majorBumps": 12,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -6076,25 +6063,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@19.2.25 peerDependencies",
-          "range": {
-            "value": ">=5.5 <5.9",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@19.2.25 peerDependencies",
           "range": {
@@ -6131,46 +6099,51 @@
           "optional": false,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@19.2.25 engines",
-          "range": {
-            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@19.2.27 engines",
-          "range": {
-            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^18.19.1 || ^20.11.1 || >=22.0.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@19.2.25 engines",
+            "@angular/cli@19.2.27 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 19 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=5.5 <5.9",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@19.2.25 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=5.5 <5.9\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -7005,6 +6978,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 47,
         "label": "L",
@@ -7015,8 +6990,13 @@
             "advanced": 6
           },
           "majorBumps": 3,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -7026,8 +7006,9 @@
           "base": 2,
           "steps": 24,
           "majorBumps": 9,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -7276,25 +7257,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@20.3.33 peerDependencies",
-          "range": {
-            "value": ">=5.8 <6.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": true,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@20.3.33 peerDependencies",
           "range": {
@@ -7331,46 +7293,51 @@
           "optional": true,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@20.3.33 engines",
-          "range": {
-            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@20.3.37 engines",
-          "range": {
-            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@20.3.33 engines",
+            "@angular/cli@20.3.37 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 20 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=5.8 <6.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@20.3.33 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=5.8 <6.0\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -8205,6 +8172,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 59,
         "label": "L",
@@ -8215,8 +8184,13 @@
             "advanced": 14
           },
           "majorBumps": 3,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -8226,8 +8200,9 @@
           "base": 2,
           "steps": 36,
           "majorBumps": 9,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -8436,25 +8411,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@21.2.25 peerDependencies",
-          "range": {
-            "value": ">=5.9 <6.1",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": true,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@21.2.25 peerDependencies",
           "range": {
@@ -8491,46 +8447,51 @@
           "optional": true,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@21.2.25 engines",
-          "range": {
-            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@21.2.24 engines",
-          "range": {
-            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "met",
-          "flagged": false
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^20.19.0 || ^22.12.0 || >=24.0.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@21.2.25 engines",
+            "@angular/cli@21.2.24 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 21 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=5.9 <6.1",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@21.2.25 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=5.9 <6.1\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -9373,6 +9334,8 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 54,
         "label": "L",
@@ -9383,8 +9346,13 @@
             "advanced": 8
           },
           "majorBumps": 4,
-          "unmetRequirements": 2,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -9394,8 +9362,9 @@
           "base": 2,
           "steps": 28,
           "majorBumps": 12,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -9716,25 +9685,6 @@
       "stepsNote": null,
       "requirements": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@22.2.1 peerDependencies",
-          "range": {
-            "value": ">=6.0 <6.1",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "4.6.4",
-            "confidence": "confirmed",
-            "source": "lockfile",
-            "note": null
-          },
-          "optional": true,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
           "name": "rxjs",
           "requiredBy": "@angular/core@22.2.1 peerDependencies",
           "range": {
@@ -9771,46 +9721,51 @@
           "optional": true,
           "status": "unmet",
           "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@22.2.1 engines",
-          "range": {
-            "value": "^22.22.3 || ^24.15.0 || >=26.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@22.2.1 engines",
-          "range": {
-            "value": "^22.22.3 || ^24.15.0 || >=26.0.0",
-            "confidence": "confirmed",
-            "source": "registry-cache",
-            "note": null
-          },
-          "installed": {
-            "value": "20.19.0",
-            "confidence": "confirmed",
-            "source": "option",
-            "note": null
-          },
-          "optional": false,
-          "status": "unmet",
-          "flagged": true
         }
       ],
+      "toolchain": {
+        "node": {
+          "name": "node",
+          "range": {
+            "value": "^22.22.3 || ^24.15.0 || >=26.0.0",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/core@22.2.1 engines",
+            "@angular/cli@22.2.1 engines"
+          ],
+          "project": {
+            "value": null,
+            "confidence": "unverified",
+            "source": "none",
+            "note": "package.json has no engines.node"
+          },
+          "status": "unverified",
+          "reason": "package.json has no engines.node, so the Node.js range \"^22.22.3 || ^24.15.0 || >=26.0.0\" of Angular 22 was not checked"
+        },
+        "typescript": {
+          "name": "typescript",
+          "range": {
+            "value": ">=6.0 <6.1",
+            "confidence": "confirmed",
+            "source": "registry-cache",
+            "note": null
+          },
+          "requiredBy": [
+            "@angular/compiler-cli@22.2.1 peerDependencies"
+          ],
+          "project": {
+            "value": "4.6.4",
+            "confidence": "confirmed",
+            "source": "lockfile",
+            "note": null
+          },
+          "status": "blocker",
+          "reason": "typescript 4.6.4 from the lockfile is outside \">=6.0 <6.1\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "libraries": [
         {
           "name": "@angular-eslint/schematics",
@@ -10674,8 +10629,10 @@
         }
       ],
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
-        "points": 74,
+        "points": 70,
         "label": "XL",
         "counts": {
           "steps": {
@@ -10684,8 +10641,13 @@
             "advanced": 12
           },
           "majorBumps": 4,
-          "unmetRequirements": 4,
+          "unmetRequirements": 1,
           "blockers": 1,
+          "toolchain": {
+            "nodeBlockers": 0,
+            "nodeWarnings": 0,
+            "typescriptBlockers": 1
+          },
           "removedApis": {
             "migrated": 0,
             "manual": 0
@@ -10695,8 +10657,9 @@
           "base": 2,
           "steps": 44,
           "majorBumps": 12,
-          "requirements": 8,
+          "requirements": 2,
           "blockers": 8,
+          "toolchain": 2,
           "removedApis": 0
         }
       }
@@ -11345,7 +11308,7 @@
   ],
   "unclassified": [],
   "effort": {
-    "points": 515,
+    "points": 511,
     "label": "XL",
     "counts": {
       "steps": {
@@ -11354,8 +11317,13 @@
         "advanced": 89
       },
       "majorBumps": 34,
-      "unmetRequirements": 17,
+      "unmetRequirements": 7,
       "blockers": 9,
+      "toolchain": {
+        "nodeBlockers": 0,
+        "nodeWarnings": 0,
+        "typescriptBlockers": 8
+      },
       "removedApis": {
         "migrated": 0,
         "manual": 0
@@ -11365,8 +11333,9 @@
       "base": 18,
       "steps": 289,
       "majorBumps": 102,
-      "requirements": 34,
+      "requirements": 14,
       "blockers": 72,
+      "toolchain": 16,
       "removedApis": 0
     }
   },
@@ -11385,7 +11354,36 @@
       "aboveTarget": 0,
       "noHop": 0
     },
-    "unscanned": []
+    "unscanned": [],
+    "deprecations": {
+      "coverage": {
+        "removalMajors": [
+          23,
+          24
+        ],
+        "retrieved": "2026-10-03"
+      },
+      "findings": 0,
+      "attached": 0,
+      "notAttached": {
+        "atOrBelowCurrent": 0,
+        "aboveTarget": 0,
+        "noHop": 0
+      }
+    },
+    "rxjs": {
+      "coverage": {
+        "rxjsMajor": 7,
+        "retrieved": "2026-10-03"
+      },
+      "installed": "7.5.5",
+      "status": "not-applicable",
+      "forcedBy": null,
+      "uncheckedHops": [],
+      "reason": "the installed rxjs 7.5.5 is already RxJS 7 or later, so RxJS 7 breaking changes are not shown",
+      "findings": 0,
+      "advisory": []
+    }
   },
   "updateGuide": {
     "url": "https://github.com/angular/angular/blob/647bf8e1436d5479b475d6364c427662586e4c88/adev/src/app/features/update/recommendations.ts",
@@ -11402,6 +11400,11 @@
     },
     {
       "hop": 14,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^14.15.0 || >=16.10.0\" of Angular 14 was not checked"
+    },
+    {
+      "hop": 14,
       "subject": "angular-cli-ghpages",
       "reason": "No release with @angular peers accepts Angular 14, but 34 releases older than 3.0.0 declare no @angular peer dependency and may support it; 3.0.0 requires @angular/cli \">=18.0.0 <22.0.0\"."
     },
@@ -11409,6 +11412,11 @@
       "hop": 14,
       "subject": "newest compatible @angular-eslint/schematics",
       "reason": "41 newer releases could not be checked, so a newer compatible release may exist"
+    },
+    {
+      "hop": 15,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^14.20.0 || ^16.13.0 || >=18.10.0\" of Angular 15 was not checked"
     },
     {
       "hop": 15,
@@ -11422,6 +11430,11 @@
     },
     {
       "hop": 16,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^16.14.0 || >=18.10.0\" of Angular 16 was not checked"
+    },
+    {
+      "hop": 16,
       "subject": "angular-cli-ghpages",
       "reason": "No release with @angular peers accepts Angular 16, but 34 releases older than 3.0.0 declare no @angular peer dependency and may support it; 3.0.0 requires @angular/cli \">=18.0.0 <22.0.0\"."
     },
@@ -11429,6 +11442,11 @@
       "hop": 16,
       "subject": "newest compatible @angular-eslint/schematics",
       "reason": "41 newer releases could not be checked, so a newer compatible release may exist"
+    },
+    {
+      "hop": 17,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^18.13.0 || >=20.9.0\" of Angular 17 was not checked"
     },
     {
       "hop": 17,
@@ -11446,9 +11464,19 @@
       "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 18 cannot be checked."
     },
     {
+      "hop": 18,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 18 was not checked"
+    },
+    {
       "hop": 19,
       "subject": "@angular-eslint/schematics",
       "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 19 cannot be checked."
+    },
+    {
+      "hop": 19,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 19 was not checked"
     },
     {
       "hop": 20,
@@ -11456,9 +11484,24 @@
       "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 20 cannot be checked."
     },
     {
+      "hop": 20,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 20 was not checked"
+    },
+    {
+      "hop": 21,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 21 was not checked"
+    },
+    {
       "hop": 21,
       "subject": "newest compatible @angular-eslint/schematics",
       "reason": "4 newer releases could not be checked, so a newer compatible release may exist"
+    },
+    {
+      "hop": 22,
+      "subject": "Node.js requirement",
+      "reason": "package.json has no engines.node, so the Node.js range \"^22.22.3 || ^24.15.0 || >=26.0.0\" of Angular 22 was not checked"
     },
     {
       "hop": 22,

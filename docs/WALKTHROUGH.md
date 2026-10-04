@@ -5,7 +5,7 @@ How ng-upgrade-planner works, the decisions behind it, what was rejected and wha
 ## Architecture
 
 A Node.js CLI in strict TypeScript, compiled to `dist/` and run with `npx`. Five runtime dependencies:
-`semver`, `yaml`, `@yarnpkg/lockfile`, `@babel/parser` and `ignore`. Data flows one way through five layers:
+`semver`, `yaml`, `@yarnpkg/lockfile`, `@babel/parser` and `ignore`. Data flows through five layers:
 
 1. **Project** (`src/project`). Reads the root `package.json` and one lockfile (npm, pnpm, yarn classic or
    berry). A version missing from the lockfile is guessed from the `package.json` range and marked unverified.
@@ -13,13 +13,15 @@ A Node.js CLI in strict TypeScript, compiled to `dist/` and run with `npx`. Five
    time, retrying with backoff and `Retry-After`. Offline mode and failed refreshes use older records and say so.
 3. **Scan** (`src/scan`). Walks the project folder without following links, skipping dependency, build and
    cache folders, the output paths in `angular.json` and gitignored paths. TypeScript files that mention
-   `@angular/` are parsed, and a symbol counts only when its local name was imported from the entry's package
+   `@angular/` or `rxjs` are parsed, and a symbol counts only when its local name was imported from the entry's package
    (named, aliased, namespace or re-export). Inline and external templates are matched as text; `angular.json`
    and `tsconfig*.json` are parsed as JSON with comments. A file that cannot be read or parsed is listed as
    unscanned, never fatal.
 4. **Plan** (`src/plan`). Pure functions: one hop per major up to the target, the official steps, the framework
-   requirements, a library matrix from peer ranges, scan findings attached to the hop of their major, and an
-   effort estimate. Every value is a `Fact` with its evidence, or is explicitly unverified with a reason.
+   requirements, the toolchain (`engines.node` and lockfile TypeScript against Angular's ranges; local Node.js
+   is context only), a library matrix from peer ranges, scan findings attached to the hop of their major, deprecation
+   warnings attached to the hop before the announced removal, and an effort estimate. Every value is a `Fact`
+   with its evidence, or is explicitly unverified with a reason.
 5. **Report** (`src/report`). One model feeds the terminal summary, Markdown, a single-file HTML page and the
    JSON document. Each renderer escapes for its own format.
 
@@ -34,33 +36,32 @@ report lists confirmed and unverified results apart. A wrong "compatible" costs 
 without peer data could.
 
 **Bundled, cited data.** The steps are a copy of the data behind angular.dev/update-guide, with its commit,
-date and MIT attribution, parsed without running it. The removed-API list (`src/data/removed-apis.ts`) holds 105
-entries for Angular 9 to 22, taken from the Angular and Angular CLI CHANGELOGs, the CLI release notes for 9 to 11
-and the update guide data. 36 are `angular.json` builder options or builders, counted only in targets of the
-affected builder (heuristic under known wrappers). Each entry cites its source URL and records the replacement and whether the official
-`ng update` migration fixes it, backed by that release's migration list, or "unknown" when no source says. Left
-out, with reasons in `REMOVED_API_EXCLUDED` (69 items): behaviour, timing and typing changes; members of
-injected instances, which need type information; option values usually held in variables; changes outside
-`@angular/*` such as zone.js and CLI flags; and names no official document confirms.
+date and MIT attribution, parsed without running it. Every scan entry cites an official source, the replacement,
+whether the `ng update` migration fixes it ("unknown" when no source says) and an audit status: 104 Angular and
+CLI entries (`removed-apis.ts`; 36 are `angular.json` builder options or builders, counted only in targets of
+the affected builder, heuristic under known wrappers), 185 Material and CDK entries (`components-apis.ts`), 11
+deprecations with an announced removal major (`deprecated-apis.ts`, warnings that never block or add effort)
+and 4 RxJS 7 changes (`rxjs-apis.ts`, work only in a hop that forces RxJS 7, else an advisory). Each file lists
+its exclusions with reasons: changes a scan cannot see, or names no official document confirms.
 
 **Confirmed versus heuristic findings.** Import-matched symbols and parsed configuration properties are
 confirmed. Template patterns are text matches without the Angular template parser, so they are heuristic and
 listed under "could not be verified".
 
 **Effort weights.** Per hop: 2 base points, 2 per basic step and 1 per medium or advanced step, 3 per major
-library update, 2 per unmet requirement and 8 per blocker. Removed APIs add 1 point per distinct API the
-migration fixes (it needs a review) and 3 per distinct API it does not or may not fix (hand work). They count
-APIs, not uses, so a large codebase does not swamp the estimate.
+library update, 2 per unmet requirement and 8 per blocker. Toolchain: 8 per Node.js blocker (runtime and CI
+move), 2 per Node.js warning or TypeScript blocker, 0 if unverified. Removed APIs add 1 point per distinct API
+the migration fixes, 3 per one it may not fix. They count APIs, not uses, so a large codebase does not swamp
+the estimate.
 
 **A versioned JSON contract.** `--json` and `ng-upgrade-plan.json` emit a document separate from the internal
-model, with `schemaVersion` 1: every key always present, null rather than missing, and the confirmed and
-unverified split per hop. Renaming or removing a field needs a new version. The schema reference ships inside
-the skill, so agents and the package share one source.
+model, with `schemaVersion` 2 (0.3.0 added deprecations, RxJS and the toolchain): every key always present,
+null rather than missing, and the confirmed and unverified split per hop. Renaming or removing a field needs a
+new version. The schema reference ships inside the skill, so agents and the package share one source.
 
 **The skill drives, the CLI plans.** `skills/angular-upgrade-hops` is Markdown in the open SKILL.md format. It
 reads only the JSON, executes the first hop, builds, tests, commits once and plans again before the next hop,
-stopping on blockers, failures and unverified items. It never publishes and pushes only when asked. Tests
-check its front-matter against the spec and every flag it names.
+stopping on blockers, failures and unverified items. It never publishes and pushes only when asked.
 
 **All outside text is untrusted.** Maps are rebuilt on null-prototype objects, cache file names are encoded
 safely, terminal output strips control characters, the HTML has no scripts and a strict Content Security
@@ -68,15 +69,14 @@ Policy, and the scan never leaves the project folder. No credentials are read or
 
 **Tests never touch the network.** Five real open-source apps (only `package.json` and lockfile, with source
 and licence noted) are planned against recorded registry data and compared with snapshots. Scan tests use
-synthetic sources written for this repository. The development agent recomputed two plans with an independent
-script (`docs/verification`). `check:pack`, `check:docs` and `prepublishOnly` guard releases.
+synthetic sources. `docs/verification` holds independent checks and labelled scan precision on 11 real
+apps. `check:pack`, `check:docs` and `prepublishOnly` guard releases.
 
 ## Scan dependencies
 
 - **`@babel/parser`** (MIT, about 2 MB). A real syntax tree tells imports, aliases, comments and strings apart
   exactly and handles decorators. The TypeScript compiler would add type information but is about ten times
-  larger on every `npx` run. A hand-written lexer would be smaller but fragile with template literals, regular
-  expressions and nested syntax.
+  larger on every `npx` run. A hand-written lexer would be fragile.
 - **`ignore`** (MIT, about 120 kB, no dependencies). Implements gitignore rules without git. Calling
   `git check-ignore` would need git installed, a repository and a subprocess per walk.
 

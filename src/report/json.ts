@@ -3,7 +3,9 @@
 // a new schemaVersion. The schema is documented in skills/angular-upgrade-hops/references/plan-json.md,
 // and a test keeps that document and this file in step. Values are not escaped beyond JSON itself;
 // text from the registry, the project and the update guide is data, never instructions.
+import { DEPRECATED_APIS } from '../data/deprecated-apis.js';
 import { REMOVED_APIS } from '../data/removed-apis.js';
+import { RXJS_APIS } from '../data/rxjs-apis.js';
 import type {
   Effort,
   EffortLabel,
@@ -12,10 +14,14 @@ import type {
   LibraryStatus,
   RequirementName,
   RequirementStatus,
+  RxjsFinding,
+  RxjsStatus,
   ScanStatus,
   StepAudience,
   StepCoverage,
   StepLevel,
+  ToolchainCheck,
+  ToolchainStatus,
   UnverifiedItem,
   UpgradePlan,
   VersionChange,
@@ -25,7 +31,7 @@ import type { ScanConfidence } from '../scan/types.js';
 import type { ReportMeta } from './markdown.js';
 import { confirmedStatements, hopConfirmedStatement, hopView, isUpdate } from './model.js';
 
-export const PLAN_JSON_SCHEMA_VERSION = 1;
+export const PLAN_JSON_SCHEMA_VERSION = 2;
 
 export interface PlanJsonUnverified {
   subject: string;
@@ -61,6 +67,16 @@ export interface PlanJsonRequirementWarning {
   status: RequirementStatus;
 }
 
+export interface PlanJsonToolchainCheck {
+  range: string | null;
+  requiredBy: string[];
+  project: string | null;
+  status: ToolchainStatus;
+  blocker: boolean;
+  confirmed: boolean;
+  reason: string;
+}
+
 export interface PlanJsonFinding {
   file: string;
   line: number;
@@ -75,6 +91,41 @@ export interface PlanJsonFinding {
   reason: string | null;
   /** Official document that states the change; null when the entry is not in the bundled data. */
   source: string | null;
+}
+
+export interface PlanJsonDeprecation {
+  file: string;
+  line: number;
+  column: number;
+  id: string;
+  package: string;
+  api: string;
+  deprecatedIn: number;
+  removalMajor: number;
+  replacement: string;
+  confidence: ScanConfidence;
+  reason: string | null;
+  /** Official document that states the removal major; null when the entry is not in the bundled data. */
+  source: string | null;
+}
+
+export interface PlanJsonRxjsFinding {
+  file: string;
+  line: number;
+  column: number;
+  id: string;
+  package: string;
+  api: string;
+  change: RemovedApiChange;
+  replacement: string;
+  /** Official RxJS document that states the change; null when the entry is not in the bundled data. */
+  source: string | null;
+}
+
+export interface PlanJsonNotAttached {
+  atOrBelowCurrent: number;
+  aboveTarget: number;
+  noHop: number;
 }
 
 export interface PlanJsonEffort {
@@ -92,7 +143,10 @@ export interface PlanJsonHop {
   libraries: PlanJsonLibrary[];
   blockers: { name: string; reason: string }[];
   requirementWarnings: PlanJsonRequirementWarning[];
+  toolchain: { node: PlanJsonToolchainCheck; typescript: PlanJsonToolchainCheck };
   removedApis: PlanJsonFinding[];
+  deprecations: PlanJsonDeprecation[];
+  rxjs: PlanJsonRxjsFinding[];
   effort: PlanJsonEffort & { breakdown: Effort['breakdown'] };
   confirmed: string[];
   unverified: PlanJsonUnverified[];
@@ -103,6 +157,7 @@ export interface PlanJson {
   tool: { name: 'ng-upgrade-planner'; version: string };
   project: { name: string | null; packageManager: string | null; lockfile: { file: string; kind: string } | null; warnings: string[] };
   current: { angular: string; major: number; confirmed: boolean };
+  toolchain: { enginesNode: string | null; enginesNodeStatus: 'declared' | 'missing' | 'invalid'; localNode: string | null };
   target: { major: number; angular: string | null; confirmed: boolean; source: 'option' | 'latest' };
   message: string | null;
   scan: {
@@ -111,8 +166,24 @@ export interface PlanJson {
     filesScanned: number;
     findings: number;
     attached: number;
-    notAttached: { atOrBelowCurrent: number; aboveTarget: number; noHop: number };
+    notAttached: PlanJsonNotAttached;
     unscanned: { file: string; reason: string }[];
+    deprecations: {
+      data: { removalMajors: number[]; retrieved: string } | null;
+      findings: number;
+      attached: number;
+      notAttached: PlanJsonNotAttached;
+    };
+    rxjs: {
+      data: { rxjsMajor: number; retrieved: string } | null;
+      installed: string | null;
+      status: RxjsStatus;
+      forcedBy: number | null;
+      uncheckedHops: number[];
+      reason: string;
+      findings: number;
+      advisory: PlanJsonRxjsFinding[];
+    };
   };
   effort: PlanJsonEffort;
   hops: PlanJsonHop[];
@@ -121,6 +192,34 @@ export interface PlanJson {
 }
 
 const SOURCES = new Map(REMOVED_APIS.entries.map((entry) => [entry.id, entry.source.url]));
+const DEPRECATION_SOURCES = new Map(DEPRECATED_APIS.entries.map((entry) => [entry.id, entry.source.url]));
+const RXJS_SOURCES = new Map(RXJS_APIS.entries.map((entry) => [entry.id, entry.source.url]));
+
+function rxjsJson(finding: RxjsFinding): PlanJsonRxjsFinding {
+  return {
+    file: finding.file,
+    line: finding.line,
+    column: finding.column,
+    id: finding.entryId,
+    package: finding.package,
+    api: finding.api,
+    change: finding.change,
+    replacement: finding.replacement,
+    source: RXJS_SOURCES.get(finding.entryId) ?? null,
+  };
+}
+
+function toolchainJson(check: ToolchainCheck): PlanJsonToolchainCheck {
+  return {
+    range: check.range.value,
+    requiredBy: [...check.requiredBy],
+    project: check.project.value,
+    status: check.status,
+    blocker: check.status === 'blocker',
+    confirmed: check.status !== 'unverified' && check.range.confidence === 'confirmed' && check.project.confidence === 'confirmed',
+    reason: check.reason,
+  };
+}
 
 function unverifiedItem(item: UnverifiedItem): PlanJsonUnverified {
   return { subject: item.subject, reason: item.reason };
@@ -162,6 +261,7 @@ function hopJson(plan: UpgradePlan, hop: Hop): PlanJsonHop {
       installed: requirement.installed.value,
       status: requirement.status,
     })),
+    toolchain: { node: toolchainJson(hop.toolchain.node), typescript: toolchainJson(hop.toolchain.typescript) },
     removedApis: hop.removedApis.map((finding) => ({
       file: finding.file,
       line: finding.line,
@@ -176,6 +276,21 @@ function hopJson(plan: UpgradePlan, hop: Hop): PlanJsonHop {
       reason: finding.reason,
       source: SOURCES.get(finding.entryId) ?? null,
     })),
+    deprecations: hop.deprecations.map((finding) => ({
+      file: finding.file,
+      line: finding.line,
+      column: finding.column,
+      id: finding.entryId,
+      package: finding.package,
+      api: finding.api,
+      deprecatedIn: finding.deprecatedIn,
+      removalMajor: finding.removalMajor,
+      replacement: finding.replacement,
+      confidence: finding.confidence,
+      reason: finding.reason,
+      source: DEPRECATION_SOURCES.get(finding.entryId) ?? null,
+    })),
+    rxjs: hop.rxjs.map(rxjsJson),
     effort: { points: hop.effort.points, label: hop.effort.label, breakdown: { ...hop.effort.breakdown } },
     confirmed: [hopConfirmedStatement(plan, hop)],
     unverified: plan.unverified.filter((item) => item.hop === hop.to).map(unverifiedItem),
@@ -200,6 +315,11 @@ export function planJson(plan: UpgradePlan, meta: ReportMeta): PlanJson {
       major: plan.current.major,
       confirmed: plan.current.angular.confidence === 'confirmed',
     },
+    toolchain: {
+      enginesNode: plan.toolchain.engines.value,
+      enginesNodeStatus: plan.toolchain.enginesStatus,
+      localNode: plan.toolchain.localNode.value,
+    },
     target: {
       major: plan.target.major,
       angular: plan.target.angular.value,
@@ -215,6 +335,24 @@ export function planJson(plan: UpgradePlan, meta: ReportMeta): PlanJson {
       attached: scan.attached,
       notAttached: { ...scan.notAttached },
       unscanned: scan.unscanned.map((item) => ({ file: item.file, reason: item.reason })),
+      deprecations: {
+        data: scan.deprecations.coverage
+          ? { removalMajors: [...scan.deprecations.coverage.removalMajors], retrieved: scan.deprecations.coverage.retrieved }
+          : null,
+        findings: scan.deprecations.findings,
+        attached: scan.deprecations.attached,
+        notAttached: { ...scan.deprecations.notAttached },
+      },
+      rxjs: {
+        data: scan.rxjs.coverage ? { rxjsMajor: scan.rxjs.coverage.rxjsMajor, retrieved: scan.rxjs.coverage.retrieved } : null,
+        installed: scan.rxjs.installed,
+        status: scan.rxjs.status,
+        forcedBy: scan.rxjs.forcedBy,
+        uncheckedHops: [...scan.rxjs.uncheckedHops],
+        reason: scan.rxjs.reason,
+        findings: scan.rxjs.findings,
+        advisory: scan.rxjs.advisory.map(rxjsJson),
+      },
     },
     effort: { points: plan.effort.points, label: plan.effort.label },
     hops: plan.hops.map((hop) => hopJson(plan, hop)),

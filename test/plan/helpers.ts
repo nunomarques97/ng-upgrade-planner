@@ -1,6 +1,7 @@
 // In-memory registry data and project builders for plan tests. Nothing here touches the network.
 import type { UpdateGuideData, UpdateGuideStep } from '../../src/data/types.js';
 import type { PackageSource } from '../../src/plan/index.js';
+import type { HopToolchain, ToolchainCheck, ToolchainStatus } from '../../src/plan/types.js';
 import type { ProjectDependency, ProjectInfo } from '../../src/project/types.js';
 import type { PackageRecord, PackageResult, VersionRecord } from '../../src/registry/types.js';
 
@@ -117,6 +118,7 @@ export function project(angular: string, extra: ProjectDependency[] = [], toolin
     name: 'demo-app',
     packageManager: null,
     lockfile: { kind: 'npm', file: 'package-lock.json', path: '/project/package-lock.json', formatVersion: '3' },
+    nodeEngine: { status: 'missing', range: null },
     angular: { range: `^${angular}`, version: angular, source: 'lockfile' },
     dependencies: deps.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
     warnings: [],
@@ -143,4 +145,17 @@ export function guide(steps: UpdateGuideStep[], coversThroughMajor = 17): Update
     },
     steps,
   };
+}
+
+/** A hop toolchain with the given statuses, for effort tests that do not build a plan. */
+export function toolchain(node: ToolchainStatus = 'unverified', typescript: ToolchainStatus = 'unverified'): HopToolchain {
+  const check = (name: ToolchainCheck['name'], status: ToolchainStatus): ToolchainCheck => ({
+    name,
+    range: { value: null, confidence: 'unverified', source: 'none', note: 'test' },
+    requiredBy: [],
+    project: { value: null, confidence: 'unverified', source: 'none', note: 'test' },
+    status,
+    reason: 'test',
+  });
+  return { node: check('node', node), typescript: check('typescript', typescript) };
 }

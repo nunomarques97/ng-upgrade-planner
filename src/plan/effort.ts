@@ -9,6 +9,18 @@ export const MAJOR_BUMP_POINTS = 3;
 export const REQUIREMENT_POINTS = 2;
 export const BLOCKER_POINTS = 8;
 /**
+ * Toolchain results. A Node.js blocker weighs like a library blocker: a person must move the
+ * project, its CI and its deployments to another Node.js version. A Node.js warning means narrowing
+ * engines.node and checking where the app runs. A TypeScript blocker is one install inside the
+ * range plus the type errors it may bring, like an unmet framework requirement. Unverified results
+ * add nothing: they are listed as could not be verified instead.
+ */
+export const TOOLCHAIN_POINTS: Readonly<{ nodeBlocker: number; nodeWarning: number; typescriptBlocker: number }> = {
+  nodeBlocker: BLOCKER_POINTS,
+  nodeWarning: 2,
+  typescriptBlocker: 2,
+};
+/**
  * Points per distinct removed or changed API found in a hop's source, not per occurrence, so a
  * large codebase does not swamp the estimate. An API the official ng update migration fixes needs
  * only a review; one it does not fix, or may not fix, needs hand work. Heuristic findings count
@@ -37,6 +49,10 @@ function score(counts: EffortCounts, hops: number, thresholds: readonly [number,
     majorBumps: counts.majorBumps * MAJOR_BUMP_POINTS,
     requirements: counts.unmetRequirements * REQUIREMENT_POINTS,
     blockers: counts.blockers * BLOCKER_POINTS,
+    toolchain:
+      counts.toolchain.nodeBlockers * TOOLCHAIN_POINTS.nodeBlocker +
+      counts.toolchain.nodeWarnings * TOOLCHAIN_POINTS.nodeWarning +
+      counts.toolchain.typescriptBlockers * TOOLCHAIN_POINTS.typescriptBlocker,
     removedApis:
       counts.removedApis.migrated * REMOVED_API_POINTS.migrated + counts.removedApis.manual * REMOVED_API_POINTS.manual,
   };
@@ -46,20 +62,25 @@ function score(counts: EffortCounts, hops: number, thresholds: readonly [number,
     breakdown.majorBumps +
     breakdown.requirements +
     breakdown.blockers +
+    breakdown.toolchain +
     breakdown.removedApis;
   return { points, label: label(points, thresholds), counts, breakdown };
 }
 
-/** Distinct APIs among the findings, split by whether the ng update migration fixes them. */
-function removedApiCounts(findings: Hop['removedApis']): EffortCounts['removedApis'] {
+/**
+ * Distinct APIs among the findings, split by whether the ng update migration fixes them. RxJS 7
+ * breaking changes have no ng update migration, so each distinct one is manual.
+ */
+function removedApiCounts(findings: Hop['removedApis'], rxjs: Hop['rxjs']): EffortCounts['removedApis'] {
   const migration = new Map<string, string>();
   for (const finding of findings) migration.set(finding.entryId, finding.migration);
+  for (const finding of rxjs) migration.set(finding.entryId, 'no');
   let migrated = 0;
   for (const value of migration.values()) if (value === 'yes') migrated++;
   return { migrated, manual: migration.size - migrated };
 }
 
-export function hopEffort(hop: Pick<Hop, 'steps' | 'libraries' | 'requirements' | 'removedApis'>): Effort {
+export function hopEffort(hop: Pick<Hop, 'steps' | 'libraries' | 'requirements' | 'toolchain' | 'removedApis' | 'rxjs'>): Effort {
   const steps: Record<StepLevel, number> = { basic: 0, medium: 0, advanced: 0 };
   for (const step of hop.steps) steps[step.level]++;
   return score(
@@ -68,7 +89,12 @@ export function hopEffort(hop: Pick<Hop, 'steps' | 'libraries' | 'requirements' 
       majorBumps: hop.libraries.filter((lib) => lib.status === 'compatible' && lib.change === 'major').length,
       unmetRequirements: hop.requirements.filter((requirement) => requirement.flagged).length,
       blockers: hop.libraries.filter((lib) => lib.status === 'blocker').length,
-      removedApis: removedApiCounts(hop.removedApis),
+      toolchain: {
+        nodeBlockers: hop.toolchain.node.status === 'blocker' ? 1 : 0,
+        nodeWarnings: hop.toolchain.node.status === 'warning' ? 1 : 0,
+        typescriptBlockers: hop.toolchain.typescript.status === 'blocker' ? 1 : 0,
+      },
+      removedApis: removedApiCounts(hop.removedApis, hop.rxjs),
     },
     1,
     HOP_THRESHOLDS,
@@ -81,6 +107,7 @@ export function totalEffort(hops: readonly Pick<Hop, 'effort'>[]): Effort {
     majorBumps: 0,
     unmetRequirements: 0,
     blockers: 0,
+    toolchain: { nodeBlockers: 0, nodeWarnings: 0, typescriptBlockers: 0 },
     removedApis: { migrated: 0, manual: 0 },
   };
   for (const { effort } of hops) {
@@ -90,6 +117,9 @@ export function totalEffort(hops: readonly Pick<Hop, 'effort'>[]): Effort {
     counts.majorBumps += effort.counts.majorBumps;
     counts.unmetRequirements += effort.counts.unmetRequirements;
     counts.blockers += effort.counts.blockers;
+    counts.toolchain.nodeBlockers += effort.counts.toolchain.nodeBlockers;
+    counts.toolchain.nodeWarnings += effort.counts.toolchain.nodeWarnings;
+    counts.toolchain.typescriptBlockers += effort.counts.toolchain.typescriptBlockers;
     counts.removedApis.migrated += effort.counts.removedApis.migrated;
     counts.removedApis.manual += effort.counts.removedApis.manual;
   }

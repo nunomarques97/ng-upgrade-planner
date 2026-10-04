@@ -1,4 +1,35 @@
-# Plans checked by the development agent
+# Verification
+
+## Scan precision on real apps
+
+[scan-precision.md](scan-precision.md) reports how many scan findings are real uses, per rule family (removed
+Angular APIs by match kind, Material and CDK, deprecation warnings, RxJS 7 changes) and per app, on 11
+open-source Angular apps (Angular 9 to 19; npm, pnpm and yarn) at pinned commits. The labels, one per finding
+with a reason, are in [scan-precision.json](scan-precision.json). They were set by the development agent, not
+yet reviewed by a person. Recall is not measured. The report also shows precision before and after the
+false-positive fixes, and the first measurement (removed-API data only) next to the current one.
+
+The apps are listed in `scripts/real-apps.json`. `node scripts/fetch-real-apps.mjs` fetches them from GitHub into
+the git-ignored `.cache/real-apps`, and `node scripts/scan-real-apps.mjs --check` scans them again and fails when
+the findings or the report no longer match the labels. No application source is committed.
+
+## Removed-API data audit
+
+[data-audit.md](data-audit.md) records, per entry of the bundled removed-API data, the result of reading its
+official source again: confirmed, corrected (with the change), removed (with the reason) or unverified (source
+not retrieved), plus the entries added in place of removed ones. Every entry, Angular 9 to 22, is audited: 105
+read, 95 confirmed, 8 corrected, 2 removed, 0 unverified, 1 added. The audit was done by the development agent,
+not yet by a person.
+
+## Agent Skill end to end
+
+[skill-e2e.md](skill-e2e.md) records the `angular-upgrade-hops` skill followed by the development agent on one
+real app (coreui-free-angular-admin-template, Angular 19, npm) for two hops, 19 to 20 and 20 to 21, in a
+temporary folder outside the repository, with the locally built CLI in place of `npx ng-upgrade-planner`: each
+command with its exit code and duration, what worked, where the skill or the plan misled and how that was
+fixed, and what was not run.
+
+## Plans checked by the development agent
 
 Two fixture plans were checked line by line against the data they were built from. The check was done by the
 development agent with a separate checker script, not yet by a person:
@@ -14,7 +45,7 @@ snapshots `test/__snapshots__/fixtures/<app>.plan.json` and `.md`, produced with
 The check covers the plan fields of version 0.1: hops, steps, commands, libraries, blockers and requirements.
 The removed-API scan added later is not part of it, because the fixtures hold no source code to scan.
 
-## Method
+### Method
 
 1. **Independent recomputation.** A separate checker script, written for this verification and not part of
    the tool, read only the fixture `package.json` and lockfile, the recorded registry files and the vendored
@@ -39,7 +70,7 @@ The removed-API scan added later is not part of it, because the fixtures hold no
    committed `package.json` files show which library versions they picked for each major. These are listed next
    to the plan.
 
-## Shared limitations
+### Shared limitations
 
 These apply to every plan, not only to the two checked here:
 

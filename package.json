@@ -1,6 +1,6 @@
 {
   "name": "ng-upgrade-planner",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Plan an Angular upgrade hop by hop: official update steps, compatible library versions, blockers and effort per major version.",
   "license": "MIT",
   "author": "Nuno Marques",

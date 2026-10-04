@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "tool": {
     "name": "ng-upgrade-planner",
     "version": "snapshot"
@@ -11,12 +11,19 @@
       "file": "package-lock.json",
       "kind": "npm"
     },
-    "warnings": []
+    "warnings": [
+      "package.json has no engines.node, so the Node.js versions the project runs on are not known and the Node.js requirement of each hop cannot be checked."
+    ]
   },
   "current": {
     "angular": "15.2.10",
     "major": 15,
     "confirmed": true
+  },
+  "toolchain": {
+    "enginesNode": null,
+    "enginesNodeStatus": "missing",
+    "localNode": "20.19.0"
   },
   "target": {
     "major": 22,
@@ -40,10 +47,39 @@
       "aboveTarget": 0,
       "noHop": 0
     },
-    "unscanned": []
+    "unscanned": [],
+    "deprecations": {
+      "data": {
+        "removalMajors": [
+          23,
+          24
+        ],
+        "retrieved": "2026-10-03"
+      },
+      "findings": 0,
+      "attached": 0,
+      "notAttached": {
+        "atOrBelowCurrent": 0,
+        "aboveTarget": 0,
+        "noHop": 0
+      }
+    },
+    "rxjs": {
+      "data": {
+        "rxjsMajor": 7,
+        "retrieved": "2026-10-03"
+      },
+      "installed": "6.6.2",
+      "status": "advisory",
+      "forcedBy": null,
+      "uncheckedHops": [],
+      "reason": "no hop of this plan forces RxJS 7: the @angular/core rxjs peer range of every hop read still accepts RxJS 6. Fix these when moving rxjs to 7",
+      "findings": 0,
+      "advisory": []
+    }
   },
   "effort": {
-    "points": 489,
+    "points": 485,
     "label": "XL"
   },
   "hops": [
@@ -405,7 +441,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^16.14.0 || >=18.10.0",
+          "requiredBy": [
+            "@angular/core@16.2.12 engines",
+            "@angular/cli@16.2.16 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^16.14.0 || >=18.10.0\" of Angular 16 was not checked"
+        },
+        "typescript": {
+          "range": ">=4.9.3 <5.2",
+          "requiredBy": [
+            "@angular/compiler-cli@16.2.12 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "ok",
+          "blocker": false,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is inside \">=4.9.3 <5.2\""
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 79,
         "label": "XL",
@@ -415,13 +478,18 @@
           "majorBumps": 21,
           "requirements": 2,
           "blockers": 16,
+          "toolchain": 0,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 15 to 16: 13 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 30 official steps."
+        "Angular 15 to 16: 13 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 30 official steps."
       ],
       "unverified": [
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^16.14.0 || >=18.10.0\" of Angular 16 was not checked"
+        },
         {
           "subject": "newest compatible @angular-eslint/schematics",
           "reason": "41 newer releases could not be checked, so a newer compatible release may exist"
@@ -697,13 +765,6 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@17.3.12 peerDependencies",
-          "range": ">=5.2 <5.5",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@17.3.12 peerDependencies",
           "range": "~0.14.0",
@@ -711,7 +772,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^18.13.0 || >=20.9.0",
+          "requiredBy": [
+            "@angular/core@17.3.12 engines",
+            "@angular/cli@17.3.17 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.13.0 || >=20.9.0\" of Angular 17 was not checked"
+        },
+        "typescript": {
+          "range": ">=5.2 <5.5",
+          "requiredBy": [
+            "@angular/compiler-cli@17.3.12 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=5.2 <5.5\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 59,
         "label": "L",
@@ -719,15 +807,20 @@
           "base": 2,
           "steps": 22,
           "majorBumps": 15,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 16,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 16 to 17: 13 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 15 official steps."
+        "Angular 16 to 17: 13 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 15 official steps."
       ],
       "unverified": [
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.13.0 || >=20.9.0\" of Angular 17 was not checked"
+        },
         {
           "subject": "newest compatible @angular-eslint/schematics",
           "reason": "41 newer releases could not be checked, so a newer compatible release may exist"
@@ -1057,13 +1150,6 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@18.2.14 peerDependencies",
-          "range": ">=5.4 <5.6",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@18.2.14 peerDependencies",
           "range": "~0.14.10",
@@ -1071,7 +1157,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^18.19.1 || ^20.11.1 || >=22.0.0",
+          "requiredBy": [
+            "@angular/core@18.2.14 engines",
+            "@angular/cli@18.2.21 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 18 was not checked"
+        },
+        "typescript": {
+          "range": ">=5.4 <5.6",
+          "requiredBy": [
+            "@angular/compiler-cli@18.2.14 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=5.4 <5.6\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 64,
         "label": "L",
@@ -1079,18 +1192,23 @@
           "base": 2,
           "steps": 27,
           "majorBumps": 15,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 16,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 17 to 18: 12 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 24 official steps."
+        "Angular 17 to 18: 12 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 24 official steps."
       ],
       "unverified": [
         {
           "subject": "@angular-eslint/schematics",
           "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 18 cannot be checked."
+        },
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 18 was not checked"
         },
         {
           "subject": "newest compatible ngx-echarts",
@@ -1375,13 +1493,6 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@19.2.25 peerDependencies",
-          "range": ">=5.5 <5.9",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@19.2.25 peerDependencies",
           "range": "~0.15.0",
@@ -1389,7 +1500,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^18.19.1 || ^20.11.1 || >=22.0.0",
+          "requiredBy": [
+            "@angular/core@19.2.25 engines",
+            "@angular/cli@19.2.27 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 19 was not checked"
+        },
+        "typescript": {
+          "range": ">=5.5 <5.9",
+          "requiredBy": [
+            "@angular/compiler-cli@19.2.25 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=5.5 <5.9\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 56,
         "label": "L",
@@ -1397,18 +1535,23 @@
           "base": 2,
           "steps": 22,
           "majorBumps": 12,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 16,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 18 to 19: 12 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 17 official steps."
+        "Angular 18 to 19: 12 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 17 official steps."
       ],
       "unverified": [
         {
           "subject": "@angular-eslint/schematics",
           "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 19 cannot be checked."
+        },
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^18.19.1 || ^20.11.1 || >=22.0.0\" of Angular 19 was not checked"
         },
         {
           "subject": "newest compatible ngx-echarts",
@@ -1753,13 +1896,6 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@20.3.33 peerDependencies",
-          "range": ">=5.8 <6.0",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@20.3.33 peerDependencies",
           "range": "~0.15.0",
@@ -1767,7 +1903,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^20.19.0 || ^22.12.0 || >=24.0.0",
+          "requiredBy": [
+            "@angular/core@20.3.33 engines",
+            "@angular/cli@20.3.37 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 20 was not checked"
+        },
+        "typescript": {
+          "range": ">=5.8 <6.0",
+          "requiredBy": [
+            "@angular/compiler-cli@20.3.33 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=5.8 <6.0\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 71,
         "label": "XL",
@@ -1775,18 +1938,23 @@
           "base": 2,
           "steps": 34,
           "majorBumps": 15,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 16,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 19 to 20: 12 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 27 official steps."
+        "Angular 19 to 20: 12 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 27 official steps."
       ],
       "unverified": [
         {
           "subject": "@angular-eslint/schematics",
           "reason": "The newest release, 22.5.0, declares no @angular peer dependency, so its support for Angular 20 cannot be checked."
+        },
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 20 was not checked"
         },
         {
           "subject": "ng2-ckeditor",
@@ -2091,13 +2259,6 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@21.2.25 peerDependencies",
-          "range": ">=5.9 <6.1",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@21.2.25 peerDependencies",
           "range": "~0.15.0 || ~0.16.0",
@@ -2105,7 +2266,34 @@
           "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^20.19.0 || ^22.12.0 || >=24.0.0",
+          "requiredBy": [
+            "@angular/core@21.2.25 engines",
+            "@angular/cli@21.2.24 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 21 was not checked"
+        },
+        "typescript": {
+          "range": ">=5.9 <6.1",
+          "requiredBy": [
+            "@angular/compiler-cli@21.2.25 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=5.9 <6.1\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
         "points": 62,
         "label": "L",
@@ -2113,15 +2301,20 @@
           "base": 2,
           "steps": 25,
           "majorBumps": 15,
-          "requirements": 4,
+          "requirements": 2,
           "blockers": 16,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 20 to 21: 13 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 21 official steps."
+        "Angular 20 to 21: 13 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 21 official steps."
       ],
       "unverified": [
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^20.19.0 || ^22.12.0 || >=24.0.0\" of Angular 21 was not checked"
+        },
         {
           "subject": "newest compatible @angular-eslint/schematics",
           "reason": "4 newer releases could not be checked, so a newer compatible release may exist"
@@ -2531,51 +2724,62 @@
       ],
       "requirementWarnings": [
         {
-          "name": "typescript",
-          "requiredBy": "@angular/compiler-cli@22.2.1 peerDependencies",
-          "range": ">=6.0 <6.1",
-          "installed": "4.9.5",
-          "status": "unmet"
-        },
-        {
           "name": "zone.js",
           "requiredBy": "@angular/core@22.2.1 peerDependencies",
           "range": "~0.15.0 || ~0.16.0",
           "installed": "0.11.5",
           "status": "unmet"
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/core@22.2.1 engines",
-          "range": "^22.22.3 || ^24.15.0 || >=26.0.0",
-          "installed": "20.19.0",
-          "status": "unmet"
-        },
-        {
-          "name": "node",
-          "requiredBy": "@angular/cli@22.2.1 engines",
-          "range": "^22.22.3 || ^24.15.0 || >=26.0.0",
-          "installed": "20.19.0",
-          "status": "unmet"
         }
       ],
+      "toolchain": {
+        "node": {
+          "range": "^22.22.3 || ^24.15.0 || >=26.0.0",
+          "requiredBy": [
+            "@angular/core@22.2.1 engines",
+            "@angular/cli@22.2.1 engines"
+          ],
+          "project": null,
+          "status": "unverified",
+          "blocker": false,
+          "confirmed": false,
+          "reason": "package.json has no engines.node, so the Node.js range \"^22.22.3 || ^24.15.0 || >=26.0.0\" of Angular 22 was not checked"
+        },
+        "typescript": {
+          "range": ">=6.0 <6.1",
+          "requiredBy": [
+            "@angular/compiler-cli@22.2.1 peerDependencies"
+          ],
+          "project": "4.9.5",
+          "status": "blocker",
+          "blocker": true,
+          "confirmed": true,
+          "reason": "typescript 4.9.5 from the lockfile is outside \">=6.0 <6.1\": after ng update, install a TypeScript inside that range if ng update did not move it there"
+        }
+      },
       "removedApis": [],
+      "deprecations": [],
+      "rxjs": [],
       "effort": {
-        "points": 98,
+        "points": 94,
         "label": "XL",
         "breakdown": {
           "base": 2,
           "steps": 42,
           "majorBumps": 6,
-          "requirements": 8,
+          "requirements": 2,
           "blockers": 40,
+          "toolchain": 2,
           "removedApis": 0
         }
       },
       "confirmed": [
-        "Angular 21 to 22: 13 of 14 library results decided from published peer ranges; 5 of 5 framework requirements checked; 36 official steps."
+        "Angular 21 to 22: 13 of 14 library results decided from published peer ranges; 2 of 2 framework requirements checked; 1 of 2 toolchain checks (Node.js, TypeScript) decided from published ranges, engines.node and the lockfile; 36 official steps."
       ],
       "unverified": [
+        {
+          "subject": "Node.js requirement",
+          "reason": "package.json has no engines.node, so the Node.js range \"^22.22.3 || ^24.15.0 || >=26.0.0\" of Angular 22 was not checked"
+        },
         {
           "subject": "newest compatible @angular-eslint/schematics",
           "reason": "4 newer releases could not be checked, so a newer compatible release may exist"

@@ -56,7 +56,8 @@ the app fixtures.
 ## Removed-API data
 
 `src/data/removed-apis.ts` lists the Angular APIs the scan looks for. Every entry must cite an official Angular
-source (the Angular or Angular CLI CHANGELOG, or the angular.dev update guide or deprecations guide) and say
+source (the Angular, Angular CLI or angular/components CHANGELOG, or the angular.dev update guide or
+deprecations guide; Angular Material and CDK entries are in `src/data/components-apis.ts`) and say
 whether the official `ng update` migration fixes it; a test rejects entries without one. A change that a source
 scan cannot detect goes into `REMOVED_API_EXCLUDED` with the reason instead.
 
@@ -70,6 +71,43 @@ This is the only script that contacts the npm registry, and tests never run it. 
 `test/fixtures/registry`, trims each record to what the planner reads, and checks that every fixture plan is the
 same with the full and the trimmed data. After recording, update the snapshots with `npx vitest run -u`, read the
 diff of `test/__snapshots__/fixtures`, and explain the changes in the pull request.
+
+## Scan precision on real apps
+
+`scripts/real-apps.json` lists open-source Angular apps, each with its GitHub repository, a full pinned commit,
+a permissive licence (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause or ISC) with a link, the folder of the app,
+the lockfile kind and the installed Angular version. Two scripts measure the scan on them:
+
+```sh
+node scripts/fetch-real-apps.mjs              # uses the network: public github.com only
+npm run build
+node scripts/scan-real-apps.mjs --check
+```
+
+- `fetch-real-apps.mjs` fetches each pinned commit with git into `.cache/real-apps/<id>`, which is git-ignored,
+  and skips apps already fetched at that commit. It checks every manifest value against a strict pattern, runs
+  git without a shell, credentials, hooks or outside configuration, and never installs or runs anything from
+  the apps. `--only <id>` fetches one app.
+- `scan-real-apps.mjs` runs the built scan on every cached app, after checking the commit, lockfile kind and
+  Angular version against the manifest. Without a flag it updates `docs/verification/scan-precision.json`,
+  keeping the labels of unchanged findings and marking new ones `unlabelled`, and regenerates
+  `docs/verification/scan-precision.md`. Label each new finding `tp` or `fp` with a one-sentence reason, then
+  run it with `--render` to regenerate the Markdown. `--check` fails when the findings or the Markdown differ
+  from the JSON, when a fixed false positive is found again, or when the cache is missing.
+
+Every false positive is either fixed or kept. To fix one, change `src/scan` or `src/data`, add a minimal
+synthetic case under `test/fixtures/synthetic/scan` with a test that the finding is gone and that a nearby real
+use is still found, then move the finding from `findings` to `fixed` in the JSON with `fix` (the change) and
+`test` (the test and synthetic file). To keep one, give it a `notFixed` reason. The report shows precision before
+and after the fixes.
+
+Never commit application source: the JSON holds only paths, line numbers, entry ids, API names and labels. A
+test checks the manifest, the labels and the numbers in the Markdown offline, without the cache.
+
+The README quotes the precision between `<!-- precision:start -->` and `<!-- precision:end -->`, and
+`test/readme.test.ts` fails when that block differs from the JSON. After a new measurement, or a version bump
+(the JSON records the version, and `--check` compares it), run `scan-real-apps.mjs` and copy the numbers into
+that block in the format the test expects.
 
 ## Update guide data
 

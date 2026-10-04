@@ -6,7 +6,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEPRECATED_APIS, deprecationCoverage } from '../src/data/deprecated-apis.js';
 import { REMOVED_APIS } from '../src/data/removed-apis.js';
+import { RXJS_APIS } from '../src/data/rxjs-apis.js';
 import { buildPlan, type PackageSource, type UpgradePlan } from '../src/plan/index.js';
 import { readProject } from '../src/project/index.js';
 import { RecordCache, RegistryClient, type PackageResult } from '../src/registry/index.js';
@@ -58,11 +60,16 @@ async function planFixture(app: string): Promise<FixturePlan> {
   const dir = path.join(appsDir, app);
   const project = await readProject(dir);
   // The fixtures hold no source, so the scan runs as the CLI's would and finds nothing to scan.
-  const scanned = await scan(dir, REMOVED_APIS);
+  const scanned = await scan(dir, REMOVED_APIS, { deprecations: DEPRECATED_APIS, rxjs: RXJS_APIS });
   const plan = await buildPlan(project, source, {
     targetMajor: TARGET_MAJOR,
     nodeVersion: NODE_VERSION,
-    scan: { result: scanned, coverage: REMOVED_APIS },
+    scan: {
+      result: scanned,
+      coverage: REMOVED_APIS,
+      deprecations: deprecationCoverage(DEPRECATED_APIS),
+      rxjs: { rxjsMajor: RXJS_APIS.rxjsMajor, retrieved: RXJS_APIS.retrieved },
+    },
   });
   return { plan, results };
 }

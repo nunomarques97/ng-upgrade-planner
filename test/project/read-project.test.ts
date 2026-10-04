@@ -37,6 +37,7 @@ async function expectProjectError(dir: string, code: ProjectErrorCode): Promise<
 
 const pkg = {
   name: 'demo-app',
+  engines: { node: '^18.19.0 || >=20.11.0' },
   dependencies: {
     '@angular/core': '~14.2.0',
     '@ngrx/store': '^14.3.0',
@@ -91,6 +92,7 @@ describe('readProject', () => {
       { name: 'rxjs', registryName: 'rxjs', kind: 'dependencies', range: '~7.5.0', version: '7.5.7', source: 'lockfile' },
       { name: 'typescript', registryName: 'typescript', kind: 'devDependencies', range: '~4.7.2', version: '4.7.4', source: 'lockfile' },
     ]);
+    expect(info.nodeEngine).toEqual({ status: 'declared', range: '^18.19.0 || >=20.11.0' });
     expect(info.warnings).toEqual([]);
     // The result is plain data.
     expect(JSON.parse(JSON.stringify(info))).toEqual(info);
@@ -225,7 +227,7 @@ describe('readProject', () => {
 
     it('reports an alias whose target is not a valid name', async () => {
       const dir = await project({
-        'package.json': { dependencies: { '@angular/core': '14.2.0', sneaky: 'npm:../../x@1.0.0' } },
+        'package.json': { engines: { node: '>=18' }, dependencies: { '@angular/core': '14.2.0', sneaky: 'npm:../../x@1.0.0' } },
       });
       const info = await readProject(dir);
       expect(info.dependencies.map((d) => d.name)).toEqual(['@angular/core']);
@@ -235,6 +237,7 @@ describe('readProject', () => {
     it('skips non-string ranges and duplicate entries with a warning', async () => {
       const dir = await project({
         'package.json': {
+          engines: { node: '>=18' },
           dependencies: { '@angular/core': '14.2.0', rxjs: 7 },
           devDependencies: { '@angular/core': '15.0.0' },
         },
@@ -243,6 +246,56 @@ describe('readProject', () => {
       expect(info.angular.version).toBe('14.2.0');
       expect(info.dependencies).toHaveLength(1);
       expect(info.warnings.map((w) => w.code)).toEqual(['no-lockfile', 'invalid-dependency-spec', 'duplicate-dependency']);
+    });
+  });
+
+  describe('engines.node', () => {
+    const withEngines = (engines: unknown) => ({ ...pkg, engines });
+
+    it.each([
+      ['a range', { node: '>=18.19.0' }, '>=18.19.0'],
+      ['a bare major', { node: '18' }, '18'],
+      ['a union of ranges', { node: '^18.19.1 || ^20.11.1 || >=22.0.0' }, '^18.19.1 || ^20.11.1 || >=22.0.0'],
+    ])('reads %s as declared, with no warning', async (_label, engines, range) => {
+      const info = await readProject(await project({ 'package.json': withEngines(engines), 'package-lock.json': npmLock }));
+      expect(info.nodeEngine).toEqual({ status: 'declared', range });
+      expect(info.warnings).toEqual([]);
+    });
+
+    it.each([
+      ['no engines field', undefined],
+      ['engines without node', { npm: '>=9' }],
+      ['engines that is not an object', '>=18'],
+      ['a null node entry', { node: null }],
+    ])('reports %s as missing, with a project warning', async (_label, engines) => {
+      const info = await readProject(await project({ 'package.json': withEngines(engines), 'package-lock.json': npmLock }));
+      expect(info.nodeEngine).toEqual({ status: 'missing', range: null });
+      expect(info.warnings).toEqual([
+        {
+          code: 'engines-node-missing',
+          message:
+            'package.json has no engines.node, so the Node.js versions the project runs on are not known and the Node.js requirement of each hop cannot be checked.',
+        },
+      ]);
+    });
+
+    const ESC = String.fromCharCode(27);
+    it.each([
+      ['text that is not a range', { node: 'lts/hydrogen' }, 'lts/hydrogen', '"lts/hydrogen"'],
+      ['an empty string', { node: '  ' }, '  ', '"  "'],
+      ['control characters', { node: `>=18${ESC}[2J` }, `>=18${ESC}[2J`, '">=18\\u001b[2J"'],
+      ['a number', { node: 18 }, null, 'in package.json'],
+    ])('reports %s as invalid, with a project warning', async (_label, engines, range, shown) => {
+      const info = await readProject(await project({ 'package.json': withEngines(engines), 'package-lock.json': npmLock }));
+      expect(info.nodeEngine).toEqual({ status: 'invalid', range });
+      expect(info.warnings).toEqual([
+        {
+          code: 'engines-node-invalid',
+          message: `engines.node ${shown} is not a valid version range, so the Node.js requirement of each hop cannot be checked.`,
+        },
+      ]);
+      // eslint-disable-next-line no-control-regex
+      expect(info.warnings[0]!.message).not.toMatch(/[\u0000-\u001f]/);
     });
   });
 

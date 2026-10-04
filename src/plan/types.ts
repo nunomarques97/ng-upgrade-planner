@@ -5,7 +5,7 @@ import type { DependencyKind } from '../project/types.js';
 import type { PackageResult } from '../registry/types.js';
 import type { ScanConfidence, ScanResult, UnscannedFile } from '../scan/types.js';
 
-export const PLAN_SCHEMA = 2;
+export const PLAN_SCHEMA = 3;
 
 /**
  * confirmed: backed by the lockfile, current registry data (network or a cache entry within its
@@ -16,6 +16,7 @@ export type Confidence = 'confirmed' | 'unverified';
 
 export type EvidenceSource =
   | 'lockfile'
+  | 'package-json'
   | 'package-json-range'
   | 'registry'
   | 'registry-cache'
@@ -41,8 +42,8 @@ export interface PlanOptions {
   /** Target Angular major. Default: the major of @angular/core dist-tags.latest. */
   targetMajor?: number;
   /**
-   * Node.js version checked against the Node requirements of each hop, for example the version
-   * running the CLI. null or absent: the Node requirement status is unknown.
+   * Local Node.js version, for example the one running the CLI. It is shown as context only: the
+   * Node.js status of each hop comes from the project's engines.node. null or absent: not known.
    */
   nodeVersion?: string | null;
   /** Result of the removed-API scan of the project's source. Absent or null: the scan was turned off. */
@@ -57,9 +58,29 @@ export interface ScanCoverage {
   retrieved: string;
 }
 
+/** What the bundled deprecated-API data covers. */
+export interface DeprecationCoverage {
+  /** Removal majors the entries announce, ascending. */
+  removalMajors: number[];
+  /** Date the data's official sources were read (YYYY-MM-DD). */
+  retrieved: string;
+}
+
+/** What the bundled RxJS data covers. */
+export interface RxjsCoverage {
+  /** RxJS major whose breaking changes the entries describe. */
+  rxjsMajor: number;
+  /** Date the data's official sources were read (YYYY-MM-DD). */
+  retrieved: string;
+}
+
 export interface PlanScanInput {
   result: ScanResult;
   coverage: ScanCoverage;
+  /** The deprecated-API data the scan also matched; absent or null when it matched none. */
+  deprecations?: DeprecationCoverage | null;
+  /** The RxJS data the scan also matched; absent or null when it matched none. */
+  rxjs?: RxjsCoverage | null;
 }
 
 export type StepLevel = 'basic' | 'medium' | 'advanced';
@@ -81,7 +102,8 @@ export interface PlanStep {
 
 export type StepCoverage = 'recorded' | 'none-recorded' | 'not-covered';
 
-export type RequirementName = 'typescript' | 'rxjs' | 'zone.js' | 'node';
+/** Peer requirements of @angular/core; Node.js and TypeScript are in the hop's toolchain. */
+export type RequirementName = 'rxjs' | 'zone.js';
 
 export type RequirementStatus = 'met' | 'unmet' | 'not-installed' | 'unknown';
 
@@ -96,6 +118,38 @@ export interface Requirement {
   status: RequirementStatus;
   /** true when the requirement needs action in this hop (unmet, or a required package is missing). */
   flagged: boolean;
+}
+
+export type ToolchainName = 'node' | 'typescript';
+
+/**
+ * ok: the project is inside the hop's range. blocker: the project's engines.node allows no Node.js
+ * version in the range, or the lockfile's TypeScript is outside it. warning: engines.node allows
+ * some versions inside the range and some outside (Node.js only). unverified: the project value or
+ * the range is missing, invalid or guessed, so nothing is decided.
+ */
+export type ToolchainStatus = 'ok' | 'warning' | 'blocker' | 'unverified';
+
+export interface ToolchainCheck {
+  name: ToolchainName;
+  /**
+   * Range the hop needs. For Node.js the engines ranges of @angular/core and @angular/cli together
+   * (a version must satisfy both); for TypeScript the @angular/compiler-cli peer range.
+   */
+  range: Fact<string | null>;
+  /** Package, release and field each range comes from, for example "@angular/core@17.3.12 engines". */
+  requiredBy: string[];
+  /** The project's side: engines.node from package.json, or the installed typescript version. */
+  project: Fact<string | null>;
+  status: ToolchainStatus;
+  /** Why the check has this status, in one sentence. */
+  reason: string;
+}
+
+/** Node.js and TypeScript requirements of a hop, checked against the project. */
+export interface HopToolchain {
+  node: ToolchainCheck;
+  typescript: ToolchainCheck;
 }
 
 export interface PeerCheck {
@@ -142,7 +196,12 @@ export interface EffortCounts {
   majorBumps: number;
   unmetRequirements: number;
   blockers: number;
-  /** Distinct removed or changed APIs found in the source, by whether ng update fixes them. */
+  /** Toolchain results that add effort: Node.js blockers and warnings, TypeScript blockers. */
+  toolchain: { nodeBlockers: number; nodeWarnings: number; typescriptBlockers: number };
+  /**
+   * Distinct removed or changed APIs found in the source, by whether ng update fixes them. RxJS 7
+   * breaking changes required in the hop count as manual.
+   */
   removedApis: { migrated: number; manual: number };
 }
 
@@ -153,7 +212,15 @@ export interface Effort {
   label: EffortLabel;
   counts: EffortCounts;
   /** Points per contributor; they add up to `points`. */
-  breakdown: { base: number; steps: number; majorBumps: number; requirements: number; blockers: number; removedApis: number };
+  breakdown: {
+    base: number;
+    steps: number;
+    majorBumps: number;
+    requirements: number;
+    blockers: number;
+    toolchain: number;
+    removedApis: number;
+  };
 }
 
 /** A use of an API that is removed or changed in a hop's major, found in the project's source. */
@@ -176,6 +243,93 @@ export interface RemovedApiFinding {
   confidence: ScanConfidence;
   /** Why a heuristic finding may be wrong; null for confirmed findings. */
   reason: string | null;
+}
+
+/**
+ * A use of an API deprecated with an announced removal, shown as a warning in the hop to the major
+ * before the removal. It never blocks and adds no effort points.
+ */
+export interface DeprecationFinding {
+  /** Path relative to the project folder, with forward slashes. */
+  file: string;
+  line: number;
+  column: number;
+  /** Id of the deprecated-API data entry that matched. */
+  entryId: string;
+  package: string;
+  /** The symbol or template pattern. */
+  api: string;
+  /** Angular major that deprecated the API. */
+  deprecatedIn: number;
+  /** Angular major the official source announces for the removal. */
+  removalMajor: number;
+  replacement: string;
+  /** confirmed: found by an import of the matching package; heuristic: found by text matching. */
+  confidence: ScanConfidence;
+  /** Why a heuristic finding may be wrong; null for confirmed findings. */
+  reason: string | null;
+}
+
+/** Deprecation findings of the scan and how they relate to the plan. */
+export interface PlanDeprecations {
+  /** Data coverage; null when the scan was off or matched no deprecated-API data. */
+  coverage: DeprecationCoverage | null;
+  /** Every deprecation finding, attached to a hop or not. */
+  findings: number;
+  /** Findings attached to a hop of this plan (the hop to the removal major minus 1). */
+  attached: number;
+  /** Findings that are not part of this plan, by why. */
+  notAttached: {
+    /** The hop before the removal is at or below the installed major. */
+    atOrBelowCurrent: number;
+    /** The hop before the removal is above the target. */
+    aboveTarget: number;
+    /** The hop before the removal is in range but has no stable release. */
+    noHop: number;
+  };
+}
+
+/** A use of rxjs or one of its entry points that breaks in RxJS 7, found by an import. */
+export interface RxjsFinding {
+  /** Path relative to the project folder, with forward slashes. */
+  file: string;
+  line: number;
+  column: number;
+  /** Id of the RxJS data entry that matched. */
+  entryId: string;
+  package: string;
+  /** The symbol or call. */
+  api: string;
+  change: RemovedApiChange;
+  replacement: string;
+}
+
+/**
+ * required: the installed rxjs is 6.x and a hop's @angular/core peer range accepts no RxJS 6, so the
+ * findings are work in that hop. advisory: the installed rxjs is 6.x and no hop of the plan forces
+ * RxJS 7, so the findings are shown once, without effort points. not-applicable: rxjs is 7 or later,
+ * not a dependency, or of unknown version, so the findings are only counted. off: the scan was off or
+ * matched no RxJS data.
+ */
+export type RxjsStatus = 'required' | 'advisory' | 'not-applicable' | 'off';
+
+/** RxJS 7 breaking changes found by the scan and how they relate to the plan. */
+export interface PlanRxjs {
+  /** Data coverage; null when the scan was off or matched no RxJS data. */
+  coverage: RxjsCoverage | null;
+  /** Installed rxjs version, as in the hop requirements; null when it is not a dependency or unknown. */
+  installed: string | null;
+  status: RxjsStatus;
+  /** Target major of the first hop whose @angular/core rxjs peer range accepts no RxJS 6; null when none. */
+  forcedBy: number | null;
+  /** Target majors of the hops whose @angular/core rxjs peer range could not be read. */
+  uncheckedHops: number[];
+  /** Why the findings are required, advisory or not shown. */
+  reason: string;
+  /** Every RxJS finding, shown or not. */
+  findings: number;
+  /** The findings, shown once, when the status is advisory; empty otherwise (required ones are in the hop). */
+  advisory: RxjsFinding[];
 }
 
 /**
@@ -204,6 +358,10 @@ export interface PlanScan {
   };
   /** Files or folders that were found but could not be scanned. */
   unscanned: UnscannedFile[];
+  /** Uses of deprecated APIs; counted apart from the removed-API findings above. */
+  deprecations: PlanDeprecations;
+  /** Uses of RxJS APIs that break in RxJS 7; counted apart from the findings above. */
+  rxjs: PlanRxjs;
 }
 
 export interface Hop {
@@ -218,9 +376,21 @@ export interface Hop {
   /** Explains an empty or missing step list; null when steps are recorded. */
   stepsNote: string | null;
   requirements: Requirement[];
+  /** Node.js and TypeScript ranges of the hop and how the project compares. */
+  toolchain: HopToolchain;
   libraries: LibraryHopResult[];
   /** Uses of APIs removed or changed in this hop's major, sorted by file and position. */
   removedApis: RemovedApiFinding[];
+  /**
+   * Warnings: uses of APIs whose removal is announced for the next major, sorted by file and
+   * position. Not blockers and not part of the effort.
+   */
+  deprecations: DeprecationFinding[];
+  /**
+   * Uses of RxJS APIs that break in RxJS 7, in the first hop whose @angular/core rxjs peer range
+   * accepts no RxJS 6; empty in every other hop. Required work, part of the effort.
+   */
+  rxjs: RxjsFinding[];
   effort: Effort;
 }
 
@@ -268,6 +438,11 @@ export interface UpgradePlan {
     warnings: string[];
   };
   current: { angular: Fact<string>; major: number };
+  /**
+   * The project's engines.node (which decides the Node.js status of each hop) and the local Node.js
+   * version, which is context only.
+   */
+  toolchain: { engines: Fact<string | null>; enginesStatus: 'declared' | 'missing' | 'invalid'; localNode: Fact<string | null> };
   target: { major: number; source: 'option' | 'latest'; angular: Fact<string | null> };
   /** Set when there is nothing to plan, for example when the project is already on the target. */
   message: string | null;

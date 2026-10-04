@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REMOVED_API_EXCLUDED, REMOVED_APIS } from '../../src/data/removed-apis.js';
-import type { RemovedApiEntry, RemovedApiSource, RemovedConfigEntry } from '../../src/data/types.js';
+import type { RemovedApiAudit, RemovedApiEntry, RemovedApiSource, RemovedConfigEntry } from '../../src/data/types.js';
 import { isValidPackageName } from '../../src/project/package-name.js';
 
 const { entries, emptyMajors, firstMajor, lastMajor } = REMOVED_APIS;
@@ -22,9 +22,9 @@ function sourceProblem(source: RemovedApiSource): string | null {
   if (url.username !== '' || url.password !== '' || url.port !== '') return `unexpected URL parts: ${source.url}`;
   if (url.hostname === 'github.com') {
     if (/^\/angular\/angular-cli\/releases\/tag\/v\d+\.\d+\.\d+$/.test(url.pathname)) return null;
-    return /^\/angular\/(angular|angular-cli)\/blob\/[^/]+\/.+/.test(url.pathname)
+    return /^\/angular\/(angular|angular-cli|components)\/blob\/[^/]+\/.+/.test(url.pathname)
       ? null
-      : `not a file in angular/angular or angular/angular-cli: ${source.url}`;
+      : `not a file in angular/angular, angular/angular-cli or angular/components: ${source.url}`;
   }
   if (url.hostname === 'angular.dev' || url.hostname === 'angular.io') return null;
   if (/^v\d+\.angular\.io$/.test(url.hostname)) return null;
@@ -95,6 +95,50 @@ function hasDuplicateKeys(list: readonly RemovedApiEntry[]): boolean {
   return new Set(keys).size !== keys.length;
 }
 
+const AUDIT_STATUSES: readonly string[] = ['confirmed', 'corrected', 'removed', 'unverified', 'added'];
+
+/** Statuses an entry still in the dataset can carry; removed records live on REMOVED_API_EXCLUDED. */
+const ENTRY_STATUSES = ['confirmed', 'corrected', 'unverified', 'added'];
+
+/**
+ * An audit record needs a known status and a real read date no earlier than the data itself; every
+ * status except confirmed must say in its note what changed, why it was removed or why the source
+ * could not be read.
+ */
+function auditProblem(audit: RemovedApiAudit | undefined): string | null {
+  if (audit === undefined) return 'no audit record';
+  if (!AUDIT_STATUSES.includes(audit.status)) return `unknown status: ${String(audit.status)}`;
+  const date = new Date(`${audit.read}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(audit.read) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== audit.read) {
+    return `not a date: ${audit.read}`;
+  }
+  if (audit.read < REMOVED_APIS.retrieved) return `read before the data was written: ${audit.read}`;
+  if (audit.note !== undefined && audit.note.trim() === '') return 'empty note';
+  if (audit.status !== 'confirmed' && audit.note === undefined) return `${audit.status} without a note`;
+  return null;
+}
+
+function auditReport(): string {
+  return readFileSync(new URL('../../docs/verification/data-audit.md', import.meta.url), 'utf8');
+}
+
+/** The opening of docs/verification/data-audit.md, before its first section. */
+function auditSummary(): string {
+  const text = auditReport();
+  return text.slice(0, text.indexOf('\n## '));
+}
+
+/** Entry ids and statuses listed in the per-entry tables of docs/verification/data-audit.md. */
+function auditReportRows(): Map<string, string> {
+  const text = auditReport();
+  const rows = new Map<string, string>();
+  for (const [, id = '', status = ''] of text.matchAll(/^\| `([a-z0-9-]+)` \| (\w+) \|/gm)) {
+    if (rows.has(id)) throw new Error(`${id} is listed twice`);
+    rows.set(id, status);
+  }
+  return rows;
+}
+
 /** A well-formed synthetic builder option entry, for the checks of the validation itself. */
 function syntheticConfig(fields: Record<string, unknown>): RemovedConfigEntry {
   return {
@@ -109,6 +153,7 @@ function syntheticConfig(fields: Record<string, unknown>): RemovedConfigEntry {
     noReplacementReason: 'Synthetic.',
     migration: 'unknown',
     source: { url: 'https://angular.dev/reference/releases', title: 'Synthetic' },
+    audit: { status: 'added', read: REMOVED_APIS.retrieved, note: 'Synthetic.' },
     file: 'angular.json',
     builders: ['@angular-devkit/build-angular:dev-server'],
     option: 'browserTarget',
@@ -178,6 +223,14 @@ describe('removed Angular API dataset', () => {
     }
   });
 
+  it('does not claim the v12 i18n migration fixes options it can leave in place', () => {
+    // remove-deprecated-i18n-options keeps i18nFile and i18nLocale when outputPath does not end in the locale.
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    for (const id of ['v12-build-angular-i18n-file', 'v12-build-angular-i18n-locale']) {
+      expect(byId.get(id)?.migration, id).toBe('unknown');
+    }
+  });
+
   it('cites an official https source on every entry, empty major and exclusion', () => {
     const sources: [string, RemovedApiSource][] = [];
     for (const entry of entries) {
@@ -203,6 +256,20 @@ describe('removed Angular API dataset', () => {
     expect(sourceProblem({ url: 'https://github.com/angular/angular/releases/tag/v10.0.0', title: 'x' })).toMatch(/not a file/);
     expect(sourceProblem({ url: 'https://github.com/angular/angular-cli/releases/tag/latest', title: 'x' })).toMatch(/not a file/);
     expect(sourceProblem({ url: 'https://github.com/angular/angular-cli/releases', title: 'x' })).toMatch(/not a file/);
+  });
+
+  it('accepts files of angular/components and rejects its other pages, other repositories and hosts', () => {
+    const problem = (url: string): string | null => sourceProblem({ url, title: 'x' });
+    expect(problem('https://github.com/angular/components/blob/f6c2a193ec4ad454beeafc74469103fecfc96a12/CHANGELOG.md')).toBeNull();
+    expect(problem('https://github.com/angular/components/releases/tag/v17.0.0')).toMatch(/not a file/);
+    expect(problem('https://github.com/angular/components/tree/main/src')).toMatch(/not a file/);
+    expect(problem('https://github.com/angular/components')).toMatch(/not a file/);
+    expect(problem('https://github.com/angular/material2/blob/x/CHANGELOG.md')).toMatch(/not a file/);
+    expect(problem('https://github.com/angular/components-fork/blob/x/CHANGELOG.md')).toMatch(/not a file/);
+    expect(problem('https://github.com/someone/components/blob/x/CHANGELOG.md')).toMatch(/not a file/);
+    expect(problem('http://github.com/angular/components/blob/x/CHANGELOG.md')).toMatch(/not https/);
+    expect(problem('https://raw.githubusercontent.com/angular/components/x/CHANGELOG.md')).toMatch(/host not allowed/);
+    expect(problem('https://github.com.example.com/angular/components/blob/x/CHANGELOG.md')).toMatch(/host not allowed/);
   });
 
   it('gives a replacement, or none with a reason', () => {
@@ -278,6 +345,38 @@ describe('removed Angular API dataset', () => {
       true,
     );
     expect(pattern('v11-router-preserve-query-params-template').test('[preserveQueryParamsX]="y"')).toBe(false);
+    const outlet = pattern('v21-common-ng-component-outlet-ng-module-factory');
+    expect(outlet.test('<ng-container [ngComponentOutletNgModuleFactory]="factory">')).toBe(true);
+    expect(outlet.test('<ng-container *ngComponentOutlet="comp; ngModuleFactory: factory">')).toBe(true);
+    expect(outlet.test("<ng-container *ngComponentOutlet='comp;\n  ngModuleFactory factory'>")).toBe(true);
+    expect(outlet.test('<ng-container *ngComponentOutlet="comp; ngModule: module">')).toBe(false);
+    expect(outlet.test('<ng-container [ngComponentOutletNgModule]="module">')).toBe(false);
+    expect(outlet.test('<other [ngModuleFactory]="factory">')).toBe(false);
+    const copied = pattern('v10-cdk-clipboard-copied-output');
+    expect(copied.test('<button [cdkCopyToClipboard]="text" (copied)="done()">')).toBe(true);
+    expect(copied.test('<button (copied)="done()" cdkCopyToClipboard="text">')).toBe(true);
+    expect(copied.test('<button (copied)="done()">')).toBe(false);
+    expect(copied.test('<a cdkCopyToClipboard="x"></a><b (copied)="done()">')).toBe(false);
+    const position = pattern('v22-material-list-checkbox-position-input');
+    expect(position.test('<mat-list-option [checkboxPosition]="\'before\'">')).toBe(true);
+    expect(position.test('<mat-list-option\n  value="a"\n  checkboxPosition="after">')).toBe(true);
+    expect(position.test('<app-option checkboxPosition="before">')).toBe(false);
+    expect(position.test('<mat-list-option></mat-list-option><b checkboxPosition="x">')).toBe(false);
+    expect(position.test('<mat-list-option [checkboxPositionX]="x">')).toBe(false);
+  });
+
+  it('scans a large template without angle brackets quickly', () => {
+    // Template patterns run at every position of files up to 1 MB, so none may scan back or ahead
+    // over the whole text before its literal part has matched.
+    const text = 'lorem ipsum (copied) checkboxPosition cdkCopyToClipboard '.repeat(4).padEnd(1_000_000, 'lorem ipsum ');
+    const started = performance.now();
+    let matches = 0;
+    for (const entry of entries) {
+      if (entry.kind === 'template') matches += [...text.matchAll(new RegExp(entry.pattern, 'g'))].length;
+    }
+    expect(performance.now() - started).toBeLessThan(2000);
+    // Only the 4 (copied) texts followed by cdkCopyToClipboard with no bracket between them.
+    expect(matches).toBe(4);
   });
 
   it('has at least one entry or an explicit empty record for every major', () => {
@@ -318,8 +417,119 @@ describe('removed Angular API dataset', () => {
     expect(hasDuplicateKeys([builder, syntheticConfig({ id: 'd', builders: [devServer], option: undefined })])).toBe(true);
   });
 
+  it('carries a well-formed audit status on every bundled entry', () => {
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) {
+      expect(auditProblem(entry.audit), entry.id).toBeNull();
+      expect(ENTRY_STATUSES, entry.id).toContain(entry.audit.status);
+    }
+  });
+
+  it('keeps audit records of exclusions well-formed and marked removed', () => {
+    for (const excluded of REMOVED_API_EXCLUDED) {
+      if (excluded.audit === undefined) continue;
+      expect(auditProblem(excluded.audit), excluded.candidate).toBeNull();
+      expect(excluded.audit.status, excluded.candidate).toBe('removed');
+    }
+  });
+
+  it('rejects malformed audit records', () => {
+    const read = REMOVED_APIS.retrieved;
+    expect(auditProblem({ status: 'confirmed', read })).toBeNull();
+    expect(auditProblem({ status: 'confirmed', read, note: 'Context.' })).toBeNull();
+    expect(auditProblem({ status: 'corrected', read, note: 'replacement: X instead of Y.' })).toBeNull();
+    expect(auditProblem({ status: 'added', read, note: 'Written from the source.' })).toBeNull();
+    expect(auditProblem(undefined)).toBe('no audit record');
+    expect(auditProblem({ status: 'checked' as RemovedApiAudit['status'], read })).toMatch(/unknown status/);
+    expect(auditProblem({ status: 'confirmed', read: '' })).toMatch(/not a date/);
+    expect(auditProblem({ status: 'confirmed', read: '2026-02-30' })).toMatch(/not a date/);
+    expect(auditProblem({ status: 'confirmed', read: '3 October 2026' })).toMatch(/not a date/);
+    expect(auditProblem({ status: 'confirmed', read: '2020-01-01' })).toMatch(/before the data was written/);
+    expect(auditProblem({ status: 'confirmed', read, note: ' ' })).toBe('empty note');
+    for (const status of ['corrected', 'removed', 'unverified', 'added'] as const) {
+      expect(auditProblem({ status, read }), status).toBe(`${status} without a note`);
+      expect(auditProblem({ status, read, note: '' }), status).toBe('empty note');
+    }
+  });
+
+  it('lists every entry in docs/verification/data-audit.md with its status', () => {
+    const rows = auditReportRows();
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    for (const entry of entries) expect(rows.get(entry.id), entry.id).toBe(entry.audit.status);
+    const removedNotes = REMOVED_API_EXCLUDED.flatMap((excluded) => (excluded.audit ? [excluded.audit.note ?? ''] : []));
+    for (const [id, status] of rows) {
+      const entry = byId.get(id);
+      // A removed entry is no longer in the dataset; its record moves to REMOVED_API_EXCLUDED and names the id.
+      if (status === 'removed') {
+        expect(entry, id).toBeUndefined();
+        expect(removedNotes.filter((note) => note.startsWith(`Was entry ${id}.`)), id).toHaveLength(1);
+        continue;
+      }
+      expect(entry?.audit.status, id).toBe(status);
+    }
+    expect([...rows.values()].filter((status) => status === 'removed')).toHaveLength(removedNotes.length);
+  });
+
+  it('opens docs/verification/data-audit.md with counts per major that match the data', () => {
+    // Columns: entries read (every status except added), then one per status in AUDIT_STATUSES order.
+    const counts = new Map<string, number[]>();
+    const add = (major: string, status: string): void => {
+      const row = counts.get(major) ?? [0, 0, 0, 0, 0, 0];
+      if (status !== 'added') row[0] = (row[0] ?? 0) + 1;
+      const column = AUDIT_STATUSES.indexOf(status) + 1;
+      row[column] = (row[column] ?? 0) + 1;
+      counts.set(major, row);
+    };
+    const records = [
+      ...entries.map((entry) => ({ major: entry.major, audit: entry.audit })),
+      ...REMOVED_API_EXCLUDED.flatMap((excluded) => (excluded.audit ? [{ major: excluded.major, audit: excluded.audit }] : [])),
+    ];
+    for (const record of records) {
+      add(String(record.major), record.audit.status);
+      add('All', record.audit.status);
+    }
+    const table = new Map<string, number[]>();
+    for (const [, major = '', cells = ''] of auditSummary().matchAll(/^\| (\d+|All) \|((?: \d+ \|){6})$/gm)) {
+      table.set(
+        major,
+        cells
+          .split('|')
+          .map((cell) => cell.trim())
+          .filter((cell) => cell !== '')
+          .map(Number),
+      );
+    }
+    expect(table).toEqual(counts);
+    expect(table.size).toBe(lastMajor - firstMajor + 2);
+  });
+
+  it('names every corrected entry in the summary of docs/verification/data-audit.md', () => {
+    const summary = auditSummary();
+    for (const entry of entries) {
+      if (entry.audit.status === 'corrected') expect(summary, entry.id).toContain(`\`${entry.id}\``);
+    }
+  });
+
+  it('keeps the corrections of the Angular 16 to 22 audit', () => {
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    // No ng update migration removes the usage the scan finds for these entries.
+    for (const id of [
+      'v21-core-ignore-changes-outside-zone',
+      'v22-upgrade-get-angular-lib',
+      'v22-upgrade-set-angular-lib',
+      'v22-compiler-cli-full-template-type-check',
+    ]) {
+      expect(byId.get(id)?.migration, id).toBe('no');
+      expect(byId.get(id)?.migrationSource?.url, id).toMatch(/\/packages\/core\/schematics\/migrations\.json$/);
+    }
+    // Both symbols still compile in 22, so an import of either must not become a finding again.
+    const symbols = new Set(entries.flatMap((entry) => (entry.kind === 'symbol' ? [entry.symbol] : [])));
+    expect(symbols.has('NgModuleFactory')).toBe(false);
+    expect(symbols.has('HttpXhrBackend')).toBe(false);
+  });
+
   it('is stored as plain ASCII', () => {
-    for (const file of ['../../src/data/removed-apis.ts', '../../src/data/types.ts']) {
+    for (const file of ['../../src/data/removed-apis.ts', '../../src/data/components-apis.ts', '../../src/data/types.ts']) {
       const text = readFileSync(new URL(file, import.meta.url), 'utf8');
       expect([...text].filter((char) => char.charCodeAt(0) > 0x7f), file).toEqual([]);
     }
